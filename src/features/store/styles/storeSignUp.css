@@ -1,0 +1,95 @@
+.signup-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+
+  background-image: url("../../../assets/superMarket.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.signup-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(144, 142, 142, 0.25);
+}
+
+.signup-card {
+  position: relative;
+  z-index: 1;
+  background: white;
+  width: 520px;
+  padding: 40px;
+  border-radius: 26px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18);
+}
+
+.signup-title {
+  color: #3B983B;  
+  text-align: left;
+  margin: 0 0 18px;
+  font-size: 34px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  outline: none;
+  transition: 0.2s;
+  font-size: 14px;
+}
+
+input:focus {
+  border-color: #116f31;
+  box-shadow: 0 0 0 3px rgba(27, 132, 54, 0.18);
+}
+
+.signup-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  background: #3B983B;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.signup-btn:hover {
+  opacity: 0.85;
+}
+.login-link {
+  margin-top: 15px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.login-link span {
+  color: #3B983B;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.login-link span:hover {
+  text-decoration: underline;
+}
+

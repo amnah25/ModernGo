@@ -1,0 +1,64 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+
+  background-image: url("../../../assets/superMarket.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-container::before {
+  filter: blur(3px);  
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(144, 142, 142, 0.25);
+  z-index: 0;
+  pointer-events: none;
+
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  width: 520px;
+  padding: 40px;
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+.login-title {
+  color: #3B983B;
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  background: #3B983B;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.login-btn:hover {
+  opacity: 0.85;
+}
+.login-link a {
+  color: #3B983B;
+  font-weight: bold;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}

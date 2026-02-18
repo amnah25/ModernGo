@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import api from "../../../../services/api";
 
 function StoreForm() {
   const navigate = useNavigate();
@@ -14,22 +15,76 @@ function StoreForm() {
     categories: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
 
-    console.log(form);
+    setLoading(true);
+    setError("");
 
-    // يروح على الداشبورد
-    navigate("/store/dashboard/products");
+    try {
+      const categoriesArr = form.categories
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        address: form.address,
+        phone: form.phone,
+        location: {
+          type: "Point",
+          coordinates: [31.2357, 30.0444],
+          address: form.address,
+        },
+        categories: categoriesArr,
+      };
+
+      const res = await api.post("/stores/register", payload);
+
+      const token = res?.data?.data?.token;
+      const store = res?.data?.data?.store;
+
+      if (!token || !store?._id) {
+        throw new Error("Registration succeeded but missing token/store data");
+      }
+
+      localStorage.setItem("storeToken", token);
+      localStorage.setItem("storeId", store._id);
+      if (store?.name) localStorage.setItem("storeName", store.name);
+
+      navigate("/store/dashboard/products");
+    } catch (err) {
+      const server = err?.response?.data;
+
+      console.log("REGISTER ERROR =>", server || err);
+
+      const msg =
+        server?.message ||
+        (Array.isArray(server?.errors) ? server.errors.join(", ") : "") ||
+        server?.error ||
+        err?.message ||
+        "Sign up failed";
+
+      setError(msg || "Sign up failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,6 +94,7 @@ function StoreForm() {
           type="text"
           name="name"
           placeholder="Store Name"
+          value={form.name}
           onChange={handleChange}
           required
         />
@@ -49,6 +105,7 @@ function StoreForm() {
           type="email"
           name="email"
           placeholder="Email Address"
+          value={form.email}
           onChange={handleChange}
           required
         />
@@ -59,6 +116,7 @@ function StoreForm() {
           type="password"
           name="password"
           placeholder="Password"
+          value={form.password}
           onChange={handleChange}
           required
         />
@@ -66,6 +124,7 @@ function StoreForm() {
           type="password"
           name="confirmPassword"
           placeholder="Confirm Password"
+          value={form.confirmPassword}
           onChange={handleChange}
           required
         />
@@ -76,6 +135,7 @@ function StoreForm() {
           type="text"
           name="address"
           placeholder="Store Address"
+          value={form.address}
           onChange={handleChange}
           required
         />
@@ -86,6 +146,7 @@ function StoreForm() {
           type="text"
           name="phone"
           placeholder="Phone Number"
+          value={form.phone}
           onChange={handleChange}
           required
         />
@@ -96,13 +157,16 @@ function StoreForm() {
           type="text"
           name="categories"
           placeholder="Categories (electronics, phones...)"
+          value={form.categories}
           onChange={handleChange}
           required
         />
       </div>
 
-      <button type="submit" className="signup-btn">
-        Sign Up
+      {error && <p className="error-text">{error}</p>}
+
+      <button type="submit" className="signup-btn" disabled={loading}>
+        {loading ? "Signing up..." : "Sign Up"}
       </button>
 
       <p className="login-link">

@@ -16,36 +16,52 @@ export default function ProductTable({ products, onEdit, onDelete }) {
         </thead>
 
         <tbody>
-          {products.map((p) => (
-            <tr key={p.id}>
-              <td>
-                <img src={p.image} alt={p.name} />
-              </td>
+          {products.map((p) => {
+            const prod = p?.productId || p;
 
-              <td className="td-name">{p.name}</td>
-              <td>{p.mainPrice} EGP</td>
-              <td>{p.stock}</td>
-              <td>{p.discountPercent}%</td>
+            const productId = prod?._id;
+            const name = prod?.name || "Unnamed";
+            const price = prod?.mainPrice ?? prod?.price ?? p?.price ?? "-";
+            const stock = p?.stock ?? prod?.stock ?? 0;
+            const discount = prod?.discountPercent ?? 0;
 
-              <td className="actions">
-                <button
-                  type="button"
-                  className="btn btn-edit"
-                  onClick={() => onEdit(p)}
-                >
-                  Edit
-                </button>
+            const image =
+              prod?.image ||
+              (Array.isArray(prod?.images) ? prod.images[0] : "") ||
+              "https://via.placeholder.com/60";
 
-                <button
-                  type="button"
-                  className="btn btn-delete"
-                  onClick={() => onDelete(p.id)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+            return (
+              <tr key={p?._id || productId || name}>
+                <td>
+                  <img src={image} alt={name} />
+                </td>
+
+                <td className="td-name">{name}</td>
+                <td>{price} EGP</td>
+                <td>{stock}</td>
+                <td>{discount}%</td>
+
+                <td className="actions">
+                  <button
+                    type="button"
+                    className="btn btn-edit"
+                    onClick={() => onEdit?.(p)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-delete"
+                    onClick={() => onDelete?.(productId)}
+                    disabled={!productId}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
 
           {products.length === 0 && (
             <tr>

@@ -1,88 +1,140 @@
-import { useState } from "react";
-import { productsMock } from "../mock/products.mock";
+import { useEffect, useState } from "react";
+import api from "../../../../services/api";
 import ProductTable from "../components/ProductTable";
 import AddProductModal from "../components/AddProductModal";
-import ConfirmModal from "../components/ConfirmModal";
 import "../styles/products.css";
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState(productsMock);
+function ProductsPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [openForm, setOpenForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const [deleteId, setDeleteId] = useState(null);
+  useEffect(() => {
+    const storeId = localStorage.getItem("storeId");
 
-  const handleSave = (product) => {
-    if (editingProduct) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? product : p))
-      );
-    } else {
-      setProducts((prev) => [...prev, product]);
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await api.get(`/stores/${storeId}/products`);
+        const data = res?.data?.data;
+
+        const raw = data?.products || data?.storeProducts || data || [];
+        const arr = Array.isArray(raw) ? raw : [];
+
+        const normalized = arr.map((p) => {
+          if (p?.productId) return p;
+          return { productId: p };
+        });
+
+        setItems(normalized);
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load products";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!storeId) {
+      setError("Missing storeId. Please login again.");
+      setLoading(false);
+      return;
     }
 
-    setOpenForm(false);
-    setEditingProduct(null);
+    fetchProducts();
+  }, [refreshKey]);
+
+  const openAdd = () => {
+    setEditItem(null);
+    setIsModalOpen(true);
   };
 
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setOpenForm(true);
+  const openEdit = (product) => {
+    setEditItem(product);
+    setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    setDeleteId(id);
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditItem(null);
   };
 
-  const confirmDelete = () => {
-    setProducts((prev) => prev.filter((p) => p.id !== deleteId));
-    setDeleteId(null);
+  const handleAddedOrEdited = () => {
+    closeModal();
+    setRefreshKey((k) => k + 1);
   };
+
+  const handleDelete = async (productId) => {
+    const storeId = localStorage.getItem("storeId");
+    if (!storeId) {
+      setError("Missing storeId. Please login again.");
+      return;
+    }
+
+    if (!productId) {
+      setError("Missing productId.");
+      return;
+    }
+
+    const ok = window.confirm("Are you sure you want to delete this product?");
+    if (!ok) return;
+
+    setError("");
+
+    try {
+      await api.delete(`/stores/${storeId}/products/${productId}`);
+
+      setItems((prev) =>
+        prev.filter((p) => (p?.productId?._id || p?.productId) !== productId)
+      );
+
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.log("DELETE ERROR =>", err?.response?.data || err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Delete failed";
+      setError(msg);
+    }
+  };
+
+  if (loading) return <div>Loading products...</div>;
 
   return (
-    <div className="products-page">
+    <div>
       <div className="products-header">
-        <h2>Products</h2>
+        <h2 className="products-title">Products</h2>
 
-        <button
-          className="btn btn-add"
-          onClick={() => {
-            setEditingProduct(null);
-            setOpenForm(true);
-          }}
-        >
+        <button type="button" className="btn btn-add" onClick={openAdd}>
           + Add Product
         </button>
       </div>
 
-      <ProductTable
-        products={products}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      {error && <div className="error-text">{error}</div>}
 
       <AddProductModal
-        isOpen={openForm}
-        onClose={() => {
-          setOpenForm(false);
-          setEditingProduct(null);
-        }}
-        onAdd={handleSave}
-        initialData={editingProduct}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onAdd={handleAddedOrEdited}
+        initialData={editItem}
       />
 
-      <ConfirmModal
-        isOpen={deleteId !== null}
-        onClose={() => setDeleteId(null)}
-        title="Delete Product"
-        description="Are you sure you want to delete this product? This action can’t be undone."
-        confirmText="Yes, Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        danger
-      />
-
+      <ProductTable products={items} onEdit={openEdit} onDelete={handleDelete} />
     </div>
   );
 }
+
+export default ProductsPage;

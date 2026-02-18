@@ -8,6 +8,8 @@ import StoreLogin from "./features/store/pages/StoreLogin";
 import StoreDashboardLayout from "./features/store/dashboard/layout/StoreDashboardLayout";
 import ProductsPage from "./features/store/dashboard/pages/ProductsPage";
 
+import ProtectedRoute from "./shared/ProtectedRoute";
+
 function App() {
   return (
     <>
@@ -17,8 +19,10 @@ function App() {
         <Route path="/" element={<StoreSignUp />} />
         <Route path="/login" element={<StoreLogin />} />
 
-        <Route path="/store/dashboard" element={<StoreDashboardLayout />}>
-          <Route path="products" element={<ProductsPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/store/dashboard" element={<StoreDashboardLayout />}>
+            <Route path="products" element={<ProductsPage />} />
+          </Route>
         </Route>
       </Routes>
 

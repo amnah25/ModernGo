@@ -9,7 +9,7 @@ function Navbar() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const storeName = "ModernGo Store";
+  const storeName = localStorage.getItem("storeName") || "Store";
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -21,10 +21,18 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  useEffect(() => {
     setOpen(false);
-    navigate("/login");
-  };
+  }, [location.pathname]);
+
+const handleLogout = () => {
+  setOpen(false);
+  localStorage.removeItem("storeToken");
+  localStorage.removeItem("storeId");
+  localStorage.removeItem("storeName");
+  navigate("/login");
+};
+
 
   return (
     <nav className="navbar">
@@ -33,36 +41,39 @@ function Navbar() {
       </Link>
 
       <div className="navbar-actions" ref={menuRef}>
-
-        {location.pathname !== "/login" && !location.pathname.startsWith("/store/dashboard") && (
-          <Link to="/login" className="btn-login">
-            Log In
-          </Link>
-        )}
+        {location.pathname !== "/login" &&
+          !location.pathname.startsWith("/store/dashboard") && (
+            <Link to="/login" className="btn-login">
+              Log In
+            </Link>
+          )}
 
         {location.pathname.startsWith("/store/dashboard") && (
           <div className="store-menu">
             <button
+              type="button"
               className="store-menu-btn"
-              onClick={() => setOpen(!open)}
+              onClick={() => setOpen((prev) => !prev)}
+              aria-expanded={open}
             >
-              <span className="store-avatar">
-                {storeName.charAt(0)}
-              </span>
-
+              <span className="store-avatar">{storeName.charAt(0)}</span>
               <span className="store-name">{storeName}</span>
-
               <span className={`caret ${open ? "open" : ""}`}>▾</span>
             </button>
 
             {open && (
               <div className="store-dropdown">
-                <button className="dropdown-item">Profile</button>
-                <button className="dropdown-item">Settings</button>
+                <button type="button" className="dropdown-item">
+                  Profile
+                </button>
+                <button type="button" className="dropdown-item">
+                  Settings
+                </button>
 
                 <div className="dropdown-sep" />
 
                 <button
+                  type="button"
                   className="dropdown-item danger"
                   onClick={handleLogout}
                 >
@@ -72,7 +83,6 @@ function Navbar() {
             )}
           </div>
         )}
-
       </div>
     </nav>
   );

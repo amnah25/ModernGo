@@ -11,6 +11,15 @@ function Navbar() {
 
   const storeName = localStorage.getItem("storeName") || "Store";
 
+  const storeInitials = storeName
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase();
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -25,14 +34,13 @@ function Navbar() {
     setOpen(false);
   }, [location.pathname]);
 
-const handleLogout = () => {
-  setOpen(false);
-  localStorage.removeItem("storeToken");
-  localStorage.removeItem("storeId");
-  localStorage.removeItem("storeName");
-  navigate("/login");
-};
-
+  const handleLogout = () => {
+    setOpen(false);
+    localStorage.removeItem("storeToken");
+    localStorage.removeItem("storeId");
+    localStorage.removeItem("storeName");
+    navigate("/login");
+  };
 
   return (
     <nav className="navbar">
@@ -56,7 +64,7 @@ const handleLogout = () => {
               onClick={() => setOpen((prev) => !prev)}
               aria-expanded={open}
             >
-              <span className="store-avatar">{storeName.charAt(0)}</span>
+              <span className="store-avatar">{storeInitials}</span>
               <span className="store-name">{storeName}</span>
               <span className={`caret ${open ? "open" : ""}`}>▾</span>
             </button>

@@ -1,4 +1,4 @@
-import "../styles/modal.css";
+import "../styles/confirmModal.css"
 
 export default function ConfirmModal({
   isOpen,

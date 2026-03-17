@@ -18,6 +18,19 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
   const [error, setError] = useState("");
 
   const isEdit = Boolean(initialData);
+  const base = (api?.defaults?.baseURL || "").replace(/\/api\/?$/, "");
+
+  const resolveImg = (raw) => {
+    if (!raw) return "";
+    if (
+      raw.startsWith("http") ||
+      raw.startsWith("blob:") ||
+      raw.startsWith("data:")
+    ) {
+      return raw;
+    }
+    return `${base}${raw.startsWith("/") ? "" : "/"}${raw}`;
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,10 +49,9 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
         discountPercent: prod?.discountPercent ?? "",
         slug: prod?.slug ?? "",
         imageFile: null,
-        imagePreview:
-          prod?.image ||
-          (Array.isArray(prod?.images) ? prod.images[0] : "") ||
-          "",
+        imagePreview: resolveImg(
+          prod?.image || (Array.isArray(prod?.images) ? prod.images[0] : "") || ""
+        ),
       });
       return;
     }
@@ -130,17 +142,28 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
         fd.append("stock", String(stock));
         fd.append("discountPercent", String(discountPercent));
         fd.append("slug", buildSlug(form.name, form.slug));
-        if (form.imageFile) fd.append("images", form.imageFile);
+        fd.append("assistFolderId", "moderngo-products");
+
+        if (form.imageFile) {
+          fd.append("images", form.imageFile);
+        }
 
         const createRes = await api.post("/products", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        const createdProduct = createRes?.data?.product || createRes?.data?.data?.product;
+        const createdProduct =
+          createRes?.data?.data?.product ||
+          createRes?.data?.product ||
+          createRes?.data?.data ||
+          createRes?.data;
+
         const productId = createdProduct?._id;
 
         if (!productId) {
-          throw new Error(createRes?.data?.message || "Product created but missing productId");
+          throw new Error(
+            createRes?.data?.message || "Product created but missing productId"
+          );
         }
 
         await api.post(`/stores/${storeId}/products`, {

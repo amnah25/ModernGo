@@ -14,23 +14,27 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setError("");
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     setError("");
 
     try {
       const res = await api.post("/stores/login", {
-        email: form.email,
+        email: form.email.trim().toLowerCase(),
         password: form.password,
       });
 
-      const token = res?.data?.data?.token;
-      const store = res?.data?.data?.store;
+      const data = res?.data?.data || res?.data;
+
+      const token = data?.token;
+      const store = data?.store;
 
       if (!token) throw new Error("Token not returned");
 
@@ -41,11 +45,17 @@ function LoginForm() {
 
       navigate("/store/dashboard/products");
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
+      const server = err?.response?.data;
+
+      let msg =
+        server?.message ||
+        server?.error ||
+        (Array.isArray(server?.errors) ? server.errors.join(", ") : "") ||
         err?.message ||
         "Login failed";
+
+      if (!msg && server) msg = JSON.stringify(server);
+
       setError(msg);
     } finally {
       setLoading(false);
@@ -83,7 +93,7 @@ function LoginForm() {
       </button>
 
       <p className="login-link">
-        Don’t have an account? <Link to="/">Sign Up</Link>
+        Don’t have an account? <Link to="/store/signup">Sign Up</Link>
       </p>
     </form>
   );

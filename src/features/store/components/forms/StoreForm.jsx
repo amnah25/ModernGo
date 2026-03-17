@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../../../../services/api";
+import LocationPicker from "./LocationPicker";
 
 function StoreForm() {
   const navigate = useNavigate();
@@ -10,17 +11,28 @@ function StoreForm() {
     email: "",
     password: "",
     confirmPassword: "",
-    address: "",
     phone: "",
     categories: "",
   });
 
+  const [location, setLocation] = useState(null);
+  const [showMap, setShowMap] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
+  };
+
+  const handleLocationSelect = (selectedLocation) => {
+    setLocation(selectedLocation);
+    setShowMap(false);
+    setError("");
+  };
+
+  const handleEditLocation = () => {
+    setShowMap(true);
   };
 
   const handleSubmit = async (e) => {
@@ -31,57 +43,61 @@ function StoreForm() {
       return;
     }
 
+    if (!location) {
+      setError("Please select store location from the map.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const categoriesArr = form.categories
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean);
-
       const payload = {
-        name: form.name,
-        email: form.email,
+        name: form.name.trim(),
+        email: form.email.trim(),
         password: form.password,
         confirmPassword: form.confirmPassword,
-        address: form.address,
-        phone: form.phone,
+        address: location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
+        phone: form.phone.trim(),
+        categories: form.categories
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
         location: {
           type: "Point",
-          coordinates: [31.2357, 30.0444],
-          address: form.address,
+          coordinates: [location.lng, location.lat],
+          address: location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
         },
-        categories: categoriesArr,
       };
 
       const res = await api.post("/stores/register", payload);
 
-      const token = res?.data?.data?.token;
-      const store = res?.data?.data?.store;
+      const token = res?.data?.data?.token || res?.data?.data?.storeToken;
+      const storeId = res?.data?.data?.store?._id || res?.data?.data?.storeId;
 
-      if (!token || !store?._id) {
-        throw new Error("Registration succeeded but missing token/store data");
-      }
-
-      localStorage.setItem("storeToken", token);
-      localStorage.setItem("storeId", store._id);
-      if (store?.name) localStorage.setItem("storeName", store.name);
+      if (token) localStorage.setItem("storeToken", token);
+      if (storeId) localStorage.setItem("storeId", storeId);
+      if (form.name) localStorage.setItem("storeName", form.name.trim());
 
       navigate("/store/dashboard/products");
     } catch (err) {
-      const server = err?.response?.data;
+      const issues =
+        err?.response?.data?.cause?.validationErrors?.[0]?.issues || [];
 
-      console.log("REGISTER ERROR =>", server || err);
+      if (issues.length > 0) {
+        const messages = issues.map((issue) => issue.message).join(" | ");
+        setError(messages);
+      } else {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Registration failed";
 
-      const msg =
-        server?.message ||
-        (Array.isArray(server?.errors) ? server.errors.join(", ") : "") ||
-        server?.error ||
-        err?.message ||
-        "Sign up failed";
+        setError(msg);
+      }
 
-      setError(msg || "Sign up failed");
+      console.log("REGISTER ERROR FULL:", err?.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -131,14 +147,25 @@ function StoreForm() {
       </div>
 
       <div className="form-group">
-        <input
-          type="text"
-          name="address"
-          placeholder="Store Address"
-          value={form.address}
-          onChange={handleChange}
-          required
-        />
+        <label>Select Store Location</label>
+
+        {showMap ? (
+          <LocationPicker setLocation={handleLocationSelect} />
+        ) : (
+          <div className="selected-location-box">
+            <p className="selected-location-text">
+              {location?.label || `Lat: ${location?.lat} | Lng: ${location?.lng}`}
+            </p>
+
+            <button
+              type="button"
+              className="edit-location-btn"
+              onClick={handleEditLocation}
+            >
+              Edit location
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="form-group">
@@ -166,7 +193,7 @@ function StoreForm() {
       {error && <p className="error-text">{error}</p>}
 
       <button type="submit" className="signup-btn" disabled={loading}>
-        {loading ? "Signing up..." : "Sign Up"}
+        {loading ? "Signing Up..." : "Sign Up"}
       </button>
 
       <p className="login-link">

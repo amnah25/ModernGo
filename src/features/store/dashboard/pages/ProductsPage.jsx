@@ -1,20 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../../../services/api";
 import ProductTable from "../components/ProductTable";
 import AddProductModal from "../components/AddProductModal";
+import ConfirmModal from "../components/ConfirmModal";
 import "../styles/products.css";
 
 function ProductsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const storeId = useMemo(() => localStorage.getItem("storeId"), []);
+
   useEffect(() => {
-    const storeId = localStorage.getItem("storeId");
+    if (!storeId) {
+      setError("Missing storeId. Please login again.");
+      setLoading(false);
+      return;
+    }
 
     const fetchProducts = async () => {
       setLoading(true);
@@ -27,10 +37,36 @@ function ProductsPage() {
         const raw = data?.products || data?.storeProducts || data || [];
         const arr = Array.isArray(raw) ? raw : [];
 
-        const normalized = arr.map((p) => {
-          if (p?.productId) return p;
-          return { productId: p };
-        });
+        const normalized = arr
+          .map((p) => {
+            if (!p) return null;
+
+            if (p.productId && typeof p.productId === "object") {
+              return {
+                storeProductId: p._id,
+                ...p.productId,
+                price: p.price,
+                stock: p.stock,
+                isAvailable: p.isAvailable,
+              };
+            }
+
+            if (p.productId && typeof p.productId === "string") {
+              return {
+                storeProductId: p._id,
+                _id: p.productId,
+                price: p.price,
+                stock: p.stock,
+                isAvailable: p.isAvailable,
+              };
+            }
+
+            return {
+              storeProductId: p._id,
+              ...p,
+            };
+          })
+          .filter(Boolean);
 
         setItems(normalized);
       } catch (err) {
@@ -39,28 +75,24 @@ function ProductsPage() {
           err?.response?.data?.error ||
           err?.message ||
           "Failed to load products";
+
         setError(msg);
+        setItems([]);
       } finally {
         setLoading(false);
       }
     };
 
-    if (!storeId) {
-      setError("Missing storeId. Please login again.");
-      setLoading(false);
-      return;
-    }
-
     fetchProducts();
-  }, [refreshKey]);
+  }, [storeId, refreshKey]);
 
   const openAdd = () => {
     setEditItem(null);
     setIsModalOpen(true);
   };
 
-  const openEdit = (product) => {
-    setEditItem(product);
+  const openEdit = (row) => {
+    setEditItem(row);
     setIsModalOpen(true);
   };
 
@@ -74,65 +106,243 @@ function ProductsPage() {
     setRefreshKey((k) => k + 1);
   };
 
-  const handleDelete = async (productId) => {
-    const storeId = localStorage.getItem("storeId");
-    if (!storeId) {
-      setError("Missing storeId. Please login again.");
-      return;
-    }
+  const handleDelete = (row) => {
+    setDeleteItem(row);
+  };
 
-    if (!productId) {
-      setError("Missing productId.");
-      return;
-    }
-
-    const ok = window.confirm("Are you sure you want to delete this product?");
-    if (!ok) return;
-
-    setError("");
+  const confirmDelete = async () => {
+    const sid = localStorage.getItem("storeId");
+    const productId = deleteItem?._id;
 
     try {
-      await api.delete(`/stores/${storeId}/products/${productId}`);
-
-      setItems((prev) =>
-        prev.filter((p) => (p?.productId?._id || p?.productId) !== productId)
-      );
-
-      setRefreshKey((k) => k + 1);
+      await api.delete(`/stores/${sid}/products/${productId}`);
+      setItems((prev) => prev.filter((p) => p?._id !== productId));
+      setDeleteItem(null);
     } catch (err) {
-      console.log("DELETE ERROR =>", err?.response?.data || err);
-
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
         "Delete failed";
+
       setError(msg);
     }
   };
 
-  if (loading) return <div>Loading products...</div>;
+  const filteredItems = items.filter((item) => {
+    const name = item?.name || "";
+    const description = item?.description || "";
+    const value = search.toLowerCase();
+
+    return (
+      name.toLowerCase().includes(value) ||
+      description.toLowerCase().includes(value)
+    );
+  });
+
+  const totalProducts = items.length;
+  const lowStockCount = items.filter(
+    (item) => Number(item?.stock) > 0 && Number(item?.stock) <= 10
+  ).length;
+  const outOfStockCount = items.filter(
+    (item) => Number(item?.stock) === 0
+  ).length;
 
   return (
-    <div>
-      <div className="products-header">
-        <h2 className="products-title">Products</h2>
+    <div className="products-page fade-in-page">
+      <div className="products-shell">
+        <div className="products-page-header">
+          <div className="products-header-text">
+            <p className="products-subtitle">Dashboard / Products</p>
+            <h2 className="products-title">Products</h2>
+            <p className="products-description">
+              Manage your store products, stock and pricing.
+            </p>
+          </div>
 
-        <button type="button" className="btn btn-add" onClick={openAdd}>
-          + Add Product
-        </button>
+          <button type="button" className="btn-add" onClick={openAdd}>
+            <span className="btn-add-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+            </span>
+            Add Product
+          </button>
+        </div>
+
+        <div className="products-stats">
+          <div className="stat-card slide-up delay-1">
+            <div className="stat-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="stat-svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="stat-label">Total Products</p>
+              <h3 className="stat-value">{totalProducts}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card slide-up delay-2">
+            <div className="stat-icon warning">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="stat-svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374l7.355-12.75c.866-1.5 3.03-1.5 3.896 0l7.355 12.75Z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 16.5h.007v.008H12V16.5Z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="stat-label">Low Stock</p>
+              <h3 className="stat-value">{lowStockCount}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card slide-up delay-3">
+            <div className="stat-icon danger">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="stat-svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.75 9.75 14.25 14.25m0-4.5-4.5 4.5"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="stat-label">Out of Stock</p>
+              <h3 className="stat-value">{outOfStockCount}</h3>
+            </div>
+          </div>
+        </div>
+
+        <div className="products-toolbar">
+          <div className="products-toolbar-left">
+            <div className="search-box">
+              <span className="search-icon">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="search-svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35m1.6-5.65a7.25 7.25 0 11-14.5 0 7.25 7.25 0 0114.5 0z"
+                  />
+                </svg>
+              </span>
+
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <button type="button" className="toolbar-btn active-filter">
+              All Products
+            </button>
+
+            <button type="button" className="toolbar-btn">
+              Sort by: Default
+            </button>
+          </div>
+
+          <div className="products-toolbar-right">
+            <button type="button" className="toolbar-btn">
+              Filter
+            </button>
+          </div>
+        </div>
+
+        {error && <div className="error-text">{error}</div>}
+
+        <div className="products-table-card">
+          <div className="table-card-header">
+            <div>
+              <h3 className="table-card-title">Products List</h3>
+              <p className="table-card-subtitle">
+                Showing {filteredItems.length} of {items.length} products
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="products-state">Loading products...</div>
+          ) : (
+            <ProductTable
+              products={filteredItems}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+
+        <AddProductModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          onAdd={handleAddedOrEdited}
+          initialData={editItem}
+        />
+
+        <ConfirmModal
+          isOpen={!!deleteItem}
+          title="Delete Product"
+          message="Are you sure you want to delete this product?"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteItem(null)}
+        />
       </div>
-
-      {error && <div className="error-text">{error}</div>}
-
-      <AddProductModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        onAdd={handleAddedOrEdited}
-        initialData={editItem}
-      />
-
-      <ProductTable products={items} onEdit={openEdit} onDelete={handleDelete} />
     </div>
   );
 }

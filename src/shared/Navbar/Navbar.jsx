@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import "./Navbar.css";
+import logo from "../../assets/logo.png";
 
 function Navbar() {
   const location = useLocation();
@@ -26,6 +27,7 @@ function Navbar() {
         setOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -45,7 +47,10 @@ function Navbar() {
   return (
     <nav className="navbar">
       <Link to="/" className="navbar-logo">
-        🛒 ModernGo
+        <div className="logo-img-box">
+          <img src={logo} alt="ModernGo Logo" />
+        </div>
+        <span className="navbar-logo-text">ModernGo</span>
       </Link>
 
       <div className="navbar-actions" ref={menuRef}>

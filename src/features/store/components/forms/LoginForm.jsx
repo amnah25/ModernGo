@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../../../services/api";
 
 function LoginForm() {
@@ -9,6 +10,8 @@ function LoginForm() {
     email: "",
     password: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -75,15 +78,22 @@ function LoginForm() {
         />
       </div>
 
-      <div className="form-group">
+      <div className="form-group password-field">
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           name="password"
           placeholder="Password"
           value={form.password}
           onChange={handleChange}
           required
         />
+
+        <span
+          className="toggle-password"
+          onClick={() => setShowPassword((prev) => !prev)}
+        >
+          {showPassword ? <FiEyeOff /> : <FiEye />}
+        </span>
       </div>
 
       {error && <p className="error-text">{error}</p>}

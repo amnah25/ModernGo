@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../../../services/api";
 import LocationPicker from "./LocationPicker";
 
@@ -17,8 +18,22 @@ function StoreForm() {
 
   const [location, setLocation] = useState(null);
   const [showMap, setShowMap] = useState(true);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ✅ الجديد: يطلع لفوق أول ما تختاري اللوكيشن
+  useEffect(() => {
+    if (!showMap) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [showMap]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -57,7 +72,8 @@ function StoreForm() {
         email: form.email.trim(),
         password: form.password,
         confirmPassword: form.confirmPassword,
-        address: location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
+        address:
+          location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
         phone: form.phone.trim(),
         categories: form.categories
           .split(",")
@@ -66,14 +82,16 @@ function StoreForm() {
         location: {
           type: "Point",
           coordinates: [location.lng, location.lat],
-          address: location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
+          address:
+            location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
         },
       };
 
       const res = await api.post("/stores/register", payload);
 
       const token = res?.data?.data?.token || res?.data?.data?.storeToken;
-      const storeId = res?.data?.data?.store?._id || res?.data?.data?.storeId;
+      const storeId =
+        res?.data?.data?.store?._id || res?.data?.data?.storeId;
 
       if (token) localStorage.setItem("storeToken", token);
       if (storeId) localStorage.setItem("storeId", storeId);
@@ -96,8 +114,6 @@ function StoreForm() {
 
         setError(msg);
       }
-
-      console.log("REGISTER ERROR FULL:", err?.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -128,22 +144,39 @@ function StoreForm() {
       </div>
 
       <div className="row">
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="confirmPassword"
-          placeholder="Confirm Password"
-          value={form.confirmPassword}
-          onChange={handleChange}
-          required
-        />
+        <div className="password-field">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
+          <span
+            className="toggle-password"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? <FiEyeOff /> : <FiEye />}
+          </span>
+        </div>
+
+        <div className="password-field">
+          <input
+            type={showConfirm ? "text" : "password"}
+            name="confirmPassword"
+            placeholder="Confirm Password"
+            value={form.confirmPassword}
+            onChange={handleChange}
+            required
+          />
+          <span
+            className="toggle-password"
+            onClick={() => setShowConfirm((prev) => !prev)}
+          >
+            {showConfirm ? <FiEyeOff /> : <FiEye />}
+          </span>
+        </div>
       </div>
 
       <div className="form-group">
@@ -154,7 +187,8 @@ function StoreForm() {
         ) : (
           <div className="selected-location-box">
             <p className="selected-location-text">
-              {location?.label || `Lat: ${location?.lat} | Lng: ${location?.lng}`}
+              {location?.label ||
+                `Lat: ${location?.lat} | Lng: ${location?.lng}`}
             </p>
 
             <button

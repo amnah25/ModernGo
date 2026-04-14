@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import api from "../../../../services/api";
+import { storeRegister } from "../../../../services/storeAuthApi";
 import LocationPicker from "./LocationPicker";
 
 function StoreForm() {
@@ -87,7 +87,9 @@ function StoreForm() {
         },
       };
 
-      const res = await api.post("/stores/register", payload);
+      console.log("📤 Sending registration payload:", JSON.stringify(payload, null, 2));
+
+      const res = await storeRegister(payload);
 
       const token = res?.data?.data?.token || res?.data?.data?.storeToken;
       const storeId =
@@ -109,9 +111,12 @@ function StoreForm() {
         const msg =
           err?.response?.data?.message ||
           err?.response?.data?.error ||
-          err?.message ||
+          err?.response?.status === 500
+            ? `Server error: ${err?.response?.data?.details || "Unknown issue"}`
+            : err?.message ||
           "Registration failed";
 
+        console.error("Registration Error:", err.response?.data); // Debug log
         setError(msg);
       }
     } finally {

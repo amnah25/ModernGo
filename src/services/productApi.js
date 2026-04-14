@@ -1,0 +1,45 @@
+import api from "./api";
+
+// ========== PRODUCT MANAGEMENT (Store Owner) ==========
+export const createProduct = (formData) =>
+  api.post("/products", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+export const updateProduct = (productId, data) =>
+  api.patch(`/products/${productId}`, data);
+
+export const updateProductAttachment = (productId, formData) =>
+  api.patch(`/products/${productId}/attachment`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+export const freezeProduct = (productId) =>
+  api.delete(`/products/${productId}/freeze`);
+
+export const restoreProduct = (productId) =>
+  api.patch(`/products/${productId}/restore`);
+
+// ========== PRODUCT QUERIES (Public) ==========
+export const getProductStores = (productId) =>
+  api.get(`/products/${productId}/stores`);
+
+export const getNearbyStoresForProduct = (
+  productId,
+  longitude,
+  latitude,
+  maxDistance = 5000
+) =>
+  api.get(`/products/${productId}/stores/nearby`, {
+    params: { longitude, latitude, maxDistance },
+  });
+
+export const getNearbyStoresForProductByName = (
+  query,
+  longitude,
+  latitude,
+  maxDistance = 5000
+) =>
+  api.get("/products/stores/nearby", {
+    params: { query, longitude, latitude, maxDistance },
+  });

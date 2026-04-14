@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import api from "../../../../services/api";
+import { storeLogin } from "../../../../services/storeAuthApi";
 
 function LoginForm() {
   const navigate = useNavigate();
@@ -29,10 +29,16 @@ function LoginForm() {
     setError("");
 
     try {
-      const res = await api.post("/stores/login", {
+      const payload = {
         email: form.email.trim().toLowerCase(),
         password: form.password,
-      });
+      };
+
+      console.log("📤 Sending login payload:", JSON.stringify(payload, null, 2));
+
+      const res = await storeLogin(payload);
+
+      console.log("✅ Login response:", res?.data);
 
       const data = res?.data?.data || res?.data;
 
@@ -48,6 +54,7 @@ function LoginForm() {
 
       navigate("/store/dashboard/products");
     } catch (err) {
+      console.error("❌ Login error:", err);
       const server = err?.response?.data;
 
       let msg =

@@ -157,7 +157,6 @@ function ProductsPage() {
 
     if (!matchesSearch) return false;
 
-    // Apply filter type
     const stock = Number(item?.stock) || 0;
     if (filterType === "all") return true;
     if (filterType === "lowStock") return stock > 0 && stock <= 10;
@@ -174,6 +173,13 @@ function ProductsPage() {
   const outOfStockCount = items.filter(
     (item) => Number(item?.stock) === 0
   ).length;
+
+  const filterLabels = {
+    all: "Filter",
+    inStock: "In Stock (>10)",
+    lowStock: "Low Stock (1-10)",
+    outOfStock: "Out of Stock",
+  };
 
   return (
     <div className="products-page fade-in-page">
@@ -208,8 +214,8 @@ function ProductsPage() {
         </div>
 
         <div className="products-stats">
-          <div 
-            className="stat-card slide-up delay-1" 
+          <div
+            className="stat-card slide-up delay-1"
             onClick={() => openStatsDetail("total")}
             role="button"
             tabIndex={0}
@@ -236,8 +242,8 @@ function ProductsPage() {
             </div>
           </div>
 
-          <div 
-            className="stat-card slide-up delay-2" 
+          <div
+            className="stat-card slide-up delay-2"
             onClick={() => openStatsDetail("lowStock")}
             role="button"
             tabIndex={0}
@@ -269,8 +275,8 @@ function ProductsPage() {
             </div>
           </div>
 
-          <div 
-            className="stat-card slide-up delay-3" 
+          <div
+            className="stat-card slide-up delay-3"
             onClick={() => openStatsDetail("outOfStock")}
             role="button"
             tabIndex={0}
@@ -342,12 +348,12 @@ function ProductsPage() {
 
           <div className="products-toolbar-right">
             <div className="filter-dropdown-container">
-              <button 
-                type="button" 
-                className="toolbar-btn"
+              <button
+                type="button"
+                className={`toolbar-btn ${filterType !== "all" ? "active-filter" : ""}`}
                 onClick={() => setFilterOpen(!filterOpen)}
               >
-                Filter
+                {filterLabels[filterType]}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -384,7 +390,7 @@ function ProductsPage() {
                       setFilterOpen(false);
                     }}
                   >
-                    In Stock ({'>'}10)
+                    In Stock ({">"}10)
                   </button>
                   <button
                     type="button"

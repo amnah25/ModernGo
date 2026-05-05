@@ -13,8 +13,10 @@ function StoreForm() {
     password: "",
     confirmPassword: "",
     phone: "",
-    categories: "",
+    categories: [],
   });
+
+  const [categoryInput, setCategoryInput] = useState("");
 
   const [location, setLocation] = useState(null);
   const [showMap, setShowMap] = useState(true);
@@ -25,7 +27,6 @@ function StoreForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ الجديد: يطلع لفوق أول ما تختاري اللوكيشن
   useEffect(() => {
     if (!showMap) {
       window.scrollTo({
@@ -36,8 +37,26 @@ function StoreForm() {
   }, [showMap]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
     setError("");
+  };
+
+  const handleAddCategory = () => {
+    if (categoryInput.trim()) {
+      setForm({
+        ...form,
+        categories: [...form.categories, categoryInput.trim()],
+      });
+      setCategoryInput("");
+    }
+  };
+
+  const handleRemoveCategory = (index) => {
+    setForm({
+      ...form,
+      categories: form.categories.filter((_, i) => i !== index),
+    });
   };
 
   const handleLocationSelect = (selectedLocation) => {
@@ -75,10 +94,7 @@ function StoreForm() {
         address:
           location.label || `Lat: ${location.lat}, Lng: ${location.lng}`,
         phone: form.phone.trim(),
-        categories: form.categories
-          .split(",")
-          .map((c) => c.trim())
-          .filter(Boolean),
+        categories: form.categories,
         location: {
           type: "Point",
           coordinates: [location.lng, location.lat],
@@ -219,14 +235,50 @@ function StoreForm() {
       </div>
 
       <div className="form-group">
-        <input
-          type="text"
-          name="categories"
-          placeholder="Categories (electronics, phones...)"
-          value={form.categories}
-          onChange={handleChange}
-          required
-        />
+        <label>Categories</label>
+        <div className="categories-container">
+          <div className="categories-list">
+            {form.categories.map((category, index) => (
+              <div key={index} className="category-tag">
+                <span>{category}</span>
+                <button
+                  type="button"
+                  className="remove-category-btn"
+                  onClick={() => handleRemoveCategory(index)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="category-input-wrapper">
+            <input
+              type="text"
+              placeholder="Add category..."
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddCategory();
+                }
+              }}
+            />
+            {categoryInput.trim() && (
+              <button
+                type="button"
+                className="add-category-btn"
+                onClick={handleAddCategory}
+              >
+                +
+              </button>
+            )}
+          </div>
+        </div>
+        {form.categories.length === 0 && (
+          <p className="hint-text">Add at least one category</p>
+        )}
       </div>
 
       {error && <p className="error-text">{error}</p>}

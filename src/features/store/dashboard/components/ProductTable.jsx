@@ -115,7 +115,7 @@ export default function ProductTable({ products, onEdit, onDelete }) {
 
                   <td>
                     <span className="discount-badge">
-                      {product?.discount ? `${product.discount}%` : "0%"}
+                      {product?.discount ? `${product.discountPercent}%` : "0%"}
                     </span>
                   </td>
 

@@ -1,0 +1,863 @@
+{
+	"info": {
+		"_postman_id": "moderngo-api-collection",
+		"name": "ModernGo API",
+		"description": "Full API collection for the ModernGo backend.\n\n**Setup:**\n1. Set the `baseUrl` variable (default: http://localhost:3000)\n2. Register a Store and a Customer — tokens are saved automatically\n3. Use the saved `storeToken` / `customerToken` variables in protected routes\n\n**Auth:** Protected routes use `Bearer {{storeToken}}` or `Bearer {{customerToken}}` automatically via the Authorization header.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "storeToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "storeId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "API Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": ["{{baseUrl}}"],
+							"path": [""]
+						},
+						"description": "Check if the API is running."
+					}
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Server health endpoint."
+					}
+				}
+			]
+		},
+		{
+			"name": "Store",
+			"item": [
+				{
+					"name": "Auth",
+					"item": [
+						{
+							"name": "Register Store",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const res = pm.response.json();",
+											"if (res.data && res.data.token) {",
+											"    pm.collectionVariables.set('storeToken', res.data.token);",
+											"}",
+											"if (res.data && res.data.store && res.data.store._id) {",
+											"    pm.collectionVariables.set('storeId', res.data.store._id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Cairo Electronics\",\n    \"email\": \"cairo.electronics@example.com\",\n    \"password\": \"StrongPass1\",\n    \"confirmPassword\": \"StrongPass1\",\n    \"address\": \"15 Tahrir Square, Downtown Cairo\",\n    \"phone\": \"01012345678\",\n    \"location\": {\n        \"type\": \"Point\",\n        \"coordinates\": [31.2357, 30.0444],\n        \"address\": \"Tahrir Square, Cairo\"\n    },\n    \"categories\": [\"electronics\", \"accessories\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/register",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "register"]
+								},
+								"description": "Register a new store. Saves `storeToken` and `storeId` automatically."
+							}
+						},
+						{
+							"name": "Login Store",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const res = pm.response.json();",
+											"if (res.data && res.data.token) {",
+											"    pm.collectionVariables.set('storeToken', res.data.token);",
+											"}",
+											"if (res.data && res.data.store && res.data.store._id) {",
+											"    pm.collectionVariables.set('storeId', res.data.store._id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"cairo.electronics@example.com\",\n    \"password\": \"StrongPass1\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "login"]
+								},
+								"description": "Login as a store. Saves `storeToken` and `storeId` automatically."
+							}
+						}
+					]
+				},
+				{
+					"name": "Public",
+					"item": [
+						{
+							"name": "Get All Stores",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores"]
+								},
+								"description": "Retrieve all stores."
+							}
+						},
+						{
+							"name": "Get Store by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{storeId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "{{storeId}}"]
+								},
+								"description": "Get a single store by its ID."
+							}
+						},
+						{
+							"name": "Search Stores by Name",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/search?query=cairo",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "search"],
+									"query": [
+										{
+											"key": "query",
+											"value": "cairo",
+											"description": "Search term (min 1 char)"
+										}
+									]
+								},
+								"description": "Search stores by name pattern."
+							}
+						},
+						{
+							"name": "Get Stores Nearby",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/nearby?longitude=31.2357&latitude=30.0444&maxDistance=5000",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "nearby"],
+									"query": [
+										{
+											"key": "longitude",
+											"value": "31.2357",
+											"description": "Longitude (-180 to 180)"
+										},
+										{
+											"key": "latitude",
+											"value": "30.0444",
+											"description": "Latitude (-90 to 90)"
+										},
+										{
+											"key": "maxDistance",
+											"value": "5000",
+											"description": "Max distance in meters (100-50000, default 5000)"
+										}
+									]
+								},
+								"description": "Find stores near a geographic point."
+							}
+						},
+						{
+							"name": "Get Stores by Category",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/category/electronics",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "category", "electronics"]
+								},
+								"description": "Get all stores in a specific category."
+							}
+						}
+					]
+				},
+				{
+					"name": "Protected",
+					"item": [
+						{
+							"name": "Update Store",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{storeToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Cairo Electronics Updated\",\n    \"address\": \"20 Tahrir Square, Downtown Cairo\",\n    \"phone\": \"01112345678\",\n    \"categories\": [\"electronics\", \"phones\", \"accessories\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{storeId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "{{storeId}}"]
+								},
+								"description": "Update store details. Only the store owner can update. All body fields are optional."
+							}
+						},
+						{
+							"name": "Update Store Password",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{storeToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"currentPassword\": \"StrongPass1\",\n    \"newPassword\": \"NewStrongPass2\",\n    \"confirmPassword\": \"NewStrongPass2\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{storeId}}/password",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "{{storeId}}", "password"]
+								},
+								"description": "Change the store password. Requires current password."
+							}
+						},
+						{
+							"name": "Delete Store",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{storeToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{storeId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "stores", "{{storeId}}"]
+								},
+								"description": "Delete a store. Only the store owner can delete."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Customer",
+			"item": [
+				{
+					"name": "Auth",
+					"item": [
+						{
+							"name": "Register Customer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const res = pm.response.json();",
+											"if (res.data && res.data.token) {",
+											"    pm.collectionVariables.set('customerToken', res.data.token);",
+											"}",
+											"if (res.data && res.data.customer && res.data.customer._id) {",
+											"    pm.collectionVariables.set('customerId', res.data.customer._id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "firstName",
+											"value": "Ahmed",
+											"type": "text"
+										},
+										{
+											"key": "lastName",
+											"value": "Hassan",
+											"type": "text"
+										},
+										{
+											"key": "email",
+											"value": "ahmed.hassan@example.com",
+											"type": "text"
+										},
+										{
+											"key": "phone",
+											"value": "01098765432",
+											"type": "text"
+										},
+										{
+											"key": "password",
+											"value": "StrongPass1",
+											"type": "text"
+										},
+										{
+											"key": "confirmPassword",
+											"value": "StrongPass1",
+											"type": "text"
+										},
+										{
+											"key": "profilePhoto",
+											"type": "file",
+											"src": "",
+											"description": "(Optional) Select a JPEG/PNG/GIF image, max 5MB"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/customers/register",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "customers", "register"]
+								},
+								"description": "Register a new customer. Uses form-data for optional profile photo upload.\nSaves `customerToken` and `customerId` automatically."
+							}
+						},
+						{
+							"name": "Login Customer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const res = pm.response.json();",
+											"if (res.data && res.data.token) {",
+											"    pm.collectionVariables.set('customerToken', res.data.token);",
+											"}",
+											"if (res.data && res.data.customer && res.data.customer._id) {",
+											"    pm.collectionVariables.set('customerId', res.data.customer._id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"ahmed.hassan@example.com\",\n    \"password\": \"StrongPass1\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/customers/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "customers", "login"]
+								},
+								"description": "Login as a customer. Saves `customerToken` and `customerId` automatically."
+							}
+						}
+					]
+				},
+				{
+					"name": "Protected",
+					"item": [
+						{
+							"name": "Get Customer Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{customerToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/customers/{{customerId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "customers", "{{customerId}}"]
+								},
+								"description": "Get customer profile. Only the authenticated customer can view their own profile."
+							}
+						},
+						{
+							"name": "Update Customer Profile",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{customerToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"Ahmed Updated\",\n    \"lastName\": \"Hassan Updated\",\n    \"phone\": \"01198765432\",\n    \"address\": {\n        \"street\": \"10 Nile Street\",\n        \"city\": \"Cairo\",\n        \"state\": \"Cairo Governorate\",\n        \"postalCode\": \"11511\",\n        \"country\": \"Egypt\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/customers/{{customerId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "customers", "{{customerId}}"]
+								},
+								"description": "Update customer profile. All body fields are optional."
+							}
+						},
+						{
+							"name": "Update Customer Password",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{customerToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"currentPassword\": \"StrongPass1\",\n    \"newPassword\": \"NewStrongPass2\",\n    \"confirmPassword\": \"NewStrongPass2\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/customers/{{customerId}}/password",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "customers", "{{customerId}}", "password"]
+								},
+								"description": "Change the customer password. Requires current password."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Product",
+			"item": [
+				{
+					"name": "Create Product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const res = pm.response.json();",
+									"if (res.data && res.data._id) {",
+									"    pm.collectionVariables.set('productId', res.data._id);",
+									"}",
+									"if (res.data && res.data.product && res.data.product._id) {",
+									"    pm.collectionVariables.set('productId', res.data.product._id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Wireless Bluetooth Headphones",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Premium wireless headphones with noise cancellation, 30-hour battery life, and comfortable over-ear design.",
+									"type": "text"
+								},
+								{
+									"key": "mainPrice",
+									"value": "299.99",
+									"type": "text"
+								},
+								{
+									"key": "stock",
+									"value": "50",
+									"type": "text"
+								},
+								{
+									"key": "discountPercent",
+									"value": "10",
+									"type": "text"
+								},
+								{
+									"key": "slug",
+									"value": "wireless-bt-headphones",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": "",
+									"description": "(Optional) Select up to 5 images (JPEG/PNG/GIF)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products"]
+						},
+						"description": "Create a new product. Requires store authentication.\nUses form-data for optional image uploads (up to 5).\nSaves `productId` automatically."
+					}
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Wireless Bluetooth Headphones v2\",\n    \"description\": \"Updated premium wireless headphones with improved noise cancellation.\",\n    \"mainPrice\": 279.99,\n    \"stock\": 75,\n    \"discountPercent\": 15\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}"]
+						},
+						"description": "Update product details. Only the store owner who created it can update."
+					}
+				},
+				{
+					"name": "Update Product Attachment",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "images",
+									"type": "file",
+									"src": "",
+									"description": "Select up to 5 images (JPEG/PNG/GIF)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}/attachment",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}", "attachment"]
+						},
+						"description": "Update product images. Only the store owner who created it can update."
+					}
+				},
+				{
+					"name": "Freeze Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}/freeze",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}", "freeze"]
+						},
+						"description": "Soft-delete (freeze) a product. Only the store owner who created it can freeze."
+					}
+				},
+				{
+					"name": "Restore Product",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}/restore",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}", "restore"]
+						},
+						"description": "Restore a previously frozen product. Only the store owner who created it can restore."
+					}
+				}
+			]
+		},
+		{
+			"name": "Store Product",
+			"item": [
+				{
+					"name": "Add Product to Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productId\": \"{{productId}}\",\n    \"price\": 259.99,\n    \"stock\": 25,\n    \"isAvailable\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/stores/{{storeId}}/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "stores", "{{storeId}}", "products"]
+						},
+						"description": "Add an existing product to a store with store-specific price and stock. Only the store owner can add."
+					}
+				},
+				{
+					"name": "Get Store Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/stores/{{storeId}}/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "stores", "{{storeId}}", "products"]
+						},
+						"description": "Get all products listed in a specific store. Public endpoint."
+					}
+				},
+				{
+					"name": "Get Product Stores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}/stores",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}", "stores"]
+						},
+						"description": "Get all stores that sell a specific product. Public endpoint."
+					}
+				},
+				{
+					"name": "Update Store Product",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"price\": 239.99,\n    \"stock\": 30,\n    \"isAvailable\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/stores/{{storeId}}/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "stores", "{{storeId}}", "products", "{{productId}}"]
+						},
+						"description": "Update store-specific product details (price, stock, availability). At least one field required. Only the store owner can update."
+					}
+				},
+				{
+					"name": "Remove Product from Store",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{storeToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/stores/{{storeId}}/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "stores", "{{storeId}}", "products", "{{productId}}"]
+						},
+						"description": "Remove a product from a store. Only the store owner can remove."
+					}
+				},
+				{
+					"name": "Nearby Stores for Product (by ID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/{{productId}}/stores/nearby?longitude=31.2357&latitude=30.0444&maxDistance=5000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "{{productId}}", "stores", "nearby"],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "31.2357",
+									"description": "Longitude (-180 to 180)"
+								},
+								{
+									"key": "latitude",
+									"value": "30.0444",
+									"description": "Latitude (-90 to 90)"
+								},
+								{
+									"key": "maxDistance",
+									"value": "5000",
+									"description": "Max distance in meters (100-50000, default 5000)"
+								}
+							]
+						},
+						"description": "Find nearby stores that sell a specific product. Returns stores sorted by distance (nearest first) with store-specific price, stock, and availability. Public endpoint."
+					}
+				},
+				{
+					"name": "Nearby Stores for Product (by Name Search)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/stores/nearby?query=headphones&longitude=31.2357&latitude=30.0444&maxDistance=5000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "stores", "nearby"],
+							"query": [
+								{
+									"key": "query",
+									"value": "headphones",
+									"description": "Product name search term (case-insensitive)"
+								},
+								{
+									"key": "longitude",
+									"value": "31.2357",
+									"description": "Longitude (-180 to 180)"
+								},
+								{
+									"key": "latitude",
+									"value": "30.0444",
+									"description": "Latitude (-90 to 90)"
+								},
+								{
+									"key": "maxDistance",
+									"value": "5000",
+									"description": "Max distance in meters (100-50000, default 5000)"
+								}
+							]
+						},
+						"description": "Search for nearby stores selling products matching a name query. Returns stores sorted by distance with all matching products per store (price, stock, availability). Public endpoint."
+					}
+				}
+			]
+		}
+	]
+}

@@ -3,6 +3,7 @@ import api from "../../../../services/api";
 import ProductTable from "../components/ProductTable";
 import AddProductModal from "../components/AddProductModal";
 import ConfirmModal from "../components/ConfirmModal";
+import StatsDetailModal from "../components/StatsDetailModal";
 import "../styles/products.css";
 
 function ProductsPage() {
@@ -16,6 +17,8 @@ function ProductsPage() {
   const [deleteItem, setDeleteItem] = useState(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isStatsDetailOpen, setIsStatsDetailOpen] = useState(false);
+  const [selectedStatType, setSelectedStatType] = useState(null);
 
   const storeId = useMemo(() => localStorage.getItem("storeId"), []);
 
@@ -47,6 +50,7 @@ function ProductsPage() {
                 ...p.productId,
                 price: p.price,
                 stock: p.stock,
+                discount: p.productId?.discountPercent || 0,
                 isAvailable: p.isAvailable,
               };
             }
@@ -57,6 +61,7 @@ function ProductsPage() {
                 _id: p.productId,
                 price: p.price,
                 stock: p.stock,
+                discount: p.discountPercent || 0,
                 isAvailable: p.isAvailable,
               };
             }
@@ -89,6 +94,16 @@ function ProductsPage() {
   const openAdd = () => {
     setEditItem(null);
     setIsModalOpen(true);
+  };
+
+  const openStatsDetail = (statType) => {
+    setSelectedStatType(statType);
+    setIsStatsDetailOpen(true);
+  };
+
+  const closeStatsDetail = () => {
+    setIsStatsDetailOpen(false);
+    setSelectedStatType(null);
   };
 
   const openEdit = (row) => {
@@ -181,7 +196,12 @@ function ProductsPage() {
         </div>
 
         <div className="products-stats">
-          <div className="stat-card slide-up delay-1">
+          <div 
+            className="stat-card slide-up delay-1" 
+            onClick={() => openStatsDetail("total")}
+            role="button"
+            tabIndex={0}
+          >
             <div className="stat-icon">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -204,7 +224,12 @@ function ProductsPage() {
             </div>
           </div>
 
-          <div className="stat-card slide-up delay-2">
+          <div 
+            className="stat-card slide-up delay-2" 
+            onClick={() => openStatsDetail("lowStock")}
+            role="button"
+            tabIndex={0}
+          >
             <div className="stat-icon warning">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -232,7 +257,12 @@ function ProductsPage() {
             </div>
           </div>
 
-          <div className="stat-card slide-up delay-3">
+          <div 
+            className="stat-card slide-up delay-3" 
+            onClick={() => openStatsDetail("outOfStock")}
+            role="button"
+            tabIndex={0}
+          >
             <div className="stat-icon danger">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -341,6 +371,13 @@ function ProductsPage() {
           message="Are you sure you want to delete this product?"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteItem(null)}
+        />
+
+        <StatsDetailModal
+          isOpen={isStatsDetailOpen}
+          onClose={closeStatsDetail}
+          statType={selectedStatType}
+          items={items}
         />
       </div>
     </div>

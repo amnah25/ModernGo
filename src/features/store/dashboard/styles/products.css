@@ -96,11 +96,13 @@
   gap: 14px;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
   transition: 0.2s;
+  cursor: pointer;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border-color: #d1d5db;
 }
 
 .stat-icon {

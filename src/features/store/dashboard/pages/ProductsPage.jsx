@@ -19,6 +19,8 @@ function ProductsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isStatsDetailOpen, setIsStatsDetailOpen] = useState(false);
   const [selectedStatType, setSelectedStatType] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterType, setFilterType] = useState("all");
 
   const storeId = useMemo(() => localStorage.getItem("storeId"), []);
 
@@ -149,10 +151,20 @@ function ProductsPage() {
     const description = item?.description || "";
     const value = search.toLowerCase();
 
-    return (
+    const matchesSearch =
       name.toLowerCase().includes(value) ||
-      description.toLowerCase().includes(value)
-    );
+      description.toLowerCase().includes(value);
+
+    if (!matchesSearch) return false;
+
+    // Apply filter type
+    const stock = Number(item?.stock) || 0;
+    if (filterType === "all") return true;
+    if (filterType === "lowStock") return stock > 0 && stock <= 10;
+    if (filterType === "outOfStock") return stock === 0;
+    if (filterType === "inStock") return stock > 10;
+
+    return true;
   });
 
   const totalProducts = items.length;
@@ -329,9 +341,74 @@ function ProductsPage() {
           </div>
 
           <div className="products-toolbar-right">
-            <button type="button" className="toolbar-btn">
-              Filter
-            </button>
+            <div className="filter-dropdown-container">
+              <button 
+                type="button" 
+                className="toolbar-btn"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                Filter
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className={`filter-icon ${filterOpen ? "open" : ""}`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
+
+              {filterOpen && (
+                <div className="filter-dropdown-menu">
+                  <button
+                    type="button"
+                    className={`filter-option ${filterType === "all" ? "active" : ""}`}
+                    onClick={() => {
+                      setFilterType("all");
+                      setFilterOpen(false);
+                    }}
+                  >
+                    All Products
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-option ${filterType === "inStock" ? "active" : ""}`}
+                    onClick={() => {
+                      setFilterType("inStock");
+                      setFilterOpen(false);
+                    }}
+                  >
+                    In Stock ({'>'}10)
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-option ${filterType === "lowStock" ? "active" : ""}`}
+                    onClick={() => {
+                      setFilterType("lowStock");
+                      setFilterOpen(false);
+                    }}
+                  >
+                    Low Stock (1-10)
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-option ${filterType === "outOfStock" ? "active" : ""}`}
+                    onClick={() => {
+                      setFilterType("outOfStock");
+                      setFilterOpen(false);
+                    }}
+                  >
+                    Out of Stock
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

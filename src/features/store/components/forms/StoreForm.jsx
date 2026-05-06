@@ -107,13 +107,22 @@ function StoreForm() {
 
       const res = await storeRegister(payload);
 
-      const token = res?.data?.data?.token || res?.data?.data?.storeToken;
+      console.log("📥 Registration response:", JSON.stringify(res?.data, null, 2));
+
+      const resData = res?.data?.data;
+      const token = resData?.token || resData?.storeToken;
       const storeId =
-        res?.data?.data?.store?._id || res?.data?.data?.storeId;
+        resData?.store?._id ||
+        resData?.storeId ||
+        resData?._id;
+      const storePhoto =
+        resData?.store?.profilePhoto ||
+        resData?.profilePhoto;
 
       if (token) localStorage.setItem("storeToken", token);
       if (storeId) localStorage.setItem("storeId", storeId);
       if (form.name) localStorage.setItem("storeName", form.name.trim());
+      if (storePhoto) localStorage.setItem("storePhoto", storePhoto);
 
       navigate("/store/dashboard/products");
     } catch (err) {

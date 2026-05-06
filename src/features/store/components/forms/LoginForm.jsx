@@ -51,6 +51,7 @@ function LoginForm() {
 
       if (store?._id) localStorage.setItem("storeId", store._id);
       if (store?.name) localStorage.setItem("storeName", store.name);
+      if (store?.profilePhoto) localStorage.setItem("storePhoto", store.profilePhoto);
 
       navigate("/store/dashboard/products");
     } catch (err) {

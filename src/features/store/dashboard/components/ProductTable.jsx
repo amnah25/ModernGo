@@ -59,7 +59,7 @@ export default function ProductTable({ products, onEdit, onDelete }) {
           ) : (
             products.map((product) => {
               const imgSrc = resolveImg(
-                product?.image || product?.imageCover || ""
+                product?.images?.[0] || product?.image || product?.imageCover || ""
               );
 
               return (

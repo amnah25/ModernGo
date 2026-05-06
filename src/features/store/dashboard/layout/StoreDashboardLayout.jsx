@@ -4,6 +4,7 @@ import "../styles/dashboard.css";
 export default function StoreDashboardLayout() {
   const token = localStorage.getItem("storeToken");
   const storeName = localStorage.getItem("storeName") || "Modern Go";
+  const storePhoto = localStorage.getItem("storePhoto") || "";
 
   const storeInitials = storeName
     .trim()
@@ -22,7 +23,11 @@ export default function StoreDashboardLayout() {
     <div className="dashboard">
       <aside className="sidebar">
         <div className="sidebar-top">
-          <div className="sidebar-logo">{storeInitials}</div>
+          {storePhoto ? (
+            <img src={storePhoto} alt={storeName} className="sidebar-logo-img" />
+          ) : (
+            <div className="sidebar-logo">{storeInitials}</div>
+          )}
           <div className="sidebar-store-info">
             <h3 className="sidebar-store-name">{storeName}</h3>
             <p className="sidebar-store-role">Store Dashboard</p>

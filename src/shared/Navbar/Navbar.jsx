@@ -11,6 +11,7 @@ function Navbar() {
   const menuRef = useRef(null);
 
   const storeName = localStorage.getItem("storeName") || "Store";
+  const storePhoto = localStorage.getItem("storePhoto") || "";
 
   const storeInitials = storeName
     .trim()
@@ -41,6 +42,7 @@ function Navbar() {
     localStorage.removeItem("storeToken");
     localStorage.removeItem("storeId");
     localStorage.removeItem("storeName");
+    localStorage.removeItem("storePhoto");
     navigate("/login");
   };
 
@@ -69,7 +71,11 @@ function Navbar() {
               onClick={() => setOpen((prev) => !prev)}
               aria-expanded={open}
             >
-              <span className="store-avatar">{storeInitials}</span>
+              {storePhoto ? (
+                <img src={storePhoto} alt={storeName} className="store-avatar-img" />
+              ) : (
+                <span className="store-avatar">{storeInitials}</span>
+              )}
               <span className="store-name">{storeName}</span>
               <span className={`caret ${open ? "open" : ""}`}>▾</span>
             </button>

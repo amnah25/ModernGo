@@ -82,11 +82,15 @@ function Navbar() {
 
             {open && (
               <div className="store-dropdown">
-                <button type="button" className="dropdown-item">
+                <button 
+                  type="button" 
+                  className="dropdown-item"
+                  onClick={() => {
+                    navigate("/store/dashboard/profile");
+                    setOpen(false);
+                  }}
+                >
                   Profile
-                </button>
-                <button type="button" className="dropdown-item">
-                  Settings
                 </button>
 
                 <div className="dropdown-sep" />

@@ -317,3 +317,41 @@ input:focus {
   font-size: 13px;
   margin-top: 8px;
 }
+
+/* Field-level error messages */
+.field-error-text {
+  display: block;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+  margin-left: 2px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Input field with error state */
+input.input-error {
+  border-color: #dc2626;
+  background-color: #fef2f2;
+}
+
+input.input-error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Textarea with error state */
+textarea.input-error {
+  border-color: #dc2626;
+  background-color: #fef2f2;
+}
+
+textarea.input-error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Form group with error */
+.form-group.has-error {
+  margin-bottom: 18px;
+}

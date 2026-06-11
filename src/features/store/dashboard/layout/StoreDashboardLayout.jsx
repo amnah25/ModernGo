@@ -62,7 +62,12 @@ export default function StoreDashboardLayout() {
             <span className="sidebar-text">Products</span>
           </NavLink>
 
-          <button type="button" className="sidebar-link sidebar-link-disabled">
+          <NavLink
+            to="/store/dashboard/orders"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link active" : "sidebar-link"
+            }
+          >
             <span className="sidebar-icon">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -80,9 +85,14 @@ export default function StoreDashboardLayout() {
               </svg>
             </span>
             <span className="sidebar-text">Orders</span>
-          </button>
+          </NavLink>
 
-          <button type="button" className="sidebar-link sidebar-link-disabled">
+          <NavLink
+            to="/store/dashboard/analytics"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link active" : "sidebar-link"
+            }
+          >
             <span className="sidebar-icon">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -105,13 +115,17 @@ export default function StoreDashboardLayout() {
               </svg>
             </span>
             <span className="sidebar-text">Analytics</span>
-          </button>
+          </NavLink>
 
           <p className="sidebar-section-title">Settings</p>
 
-          <button type="button" className="sidebar-link sidebar-link-disabled">
+          <NavLink
+            to="/store/dashboard/settings"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link active" : "sidebar-link"
+            }
+          >
             <span className="sidebar-icon">
-              <span className="sidebar-icon">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -132,9 +146,8 @@ export default function StoreDashboardLayout() {
                 />
               </svg>
             </span>
-            </span>
             <span className="sidebar-text">Settings</span>
-          </button>
+          </NavLink>
         </nav>
       </aside>
 

@@ -7,6 +7,9 @@ import StoreLogin from "./features/store/pages/StoreLogin";
 
 import StoreDashboardLayout from "./features/store/dashboard/layout/StoreDashboardLayout";
 import ProductsPage from "./features/store/dashboard/pages/ProductsPage";
+import OrdersPage from "./features/store/dashboard/pages/OrdersPage";
+import AnalyticsPage from "./features/store/dashboard/pages/AnalyticsPage";
+import SettingsPage from "./features/store/dashboard/pages/SettingsPage";
 
 import "leaflet/dist/leaflet.css";
 
@@ -22,6 +25,9 @@ function App() {
         <Route path="/store/dashboard" element={<StoreDashboardLayout />}>
           <Route index element={<Navigate to="products" replace />} />
           <Route path="products" element={<ProductsPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

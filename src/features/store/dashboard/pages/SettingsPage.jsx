@@ -1,0 +1,475 @@
+import { useEffect, useMemo, useState } from "react";
+import api from "../../../../services/api";
+import { updateStoreSettings, updateStorePassword, deleteStore } from "../../../../services/storeSettingsApi";
+import "../styles/settings.css";
+
+function SettingsPage() {
+  const storeId = useMemo(() => localStorage.getItem("storeId"), []);
+  const storeName = localStorage.getItem("storeName") || "";
+
+  // Store Info Form State
+  const [storeInfo, setStoreInfo] = useState({
+    name: "",
+    email: "",
+    address: "",
+    phone: "",
+    categories: [],
+  });
+  const [storeInfoLoading, setStoreInfoLoading] = useState(true);
+  const [storeInfoError, setStoreInfoError] = useState("");
+  const [storeInfoSuccess, setStoreInfoSuccess] = useState("");
+  const [storeInfoEditing, setStoreInfoEditing] = useState(false);
+
+  // Password Change Form State
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // Delete Store State
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // Fetch store details on mount
+  useEffect(() => {
+    if (!storeId) {
+      setStoreInfoError("Missing storeId. Please login again.");
+      setStoreInfoLoading(false);
+      return;
+    }
+
+    const fetchStoreDetails = async () => {
+      setStoreInfoLoading(true);
+      setStoreInfoError("");
+
+      try {
+        const res = await api.get(`/stores/${storeId}`);
+        const store = res?.data?.data || res?.data?.store || {};
+
+        setStoreInfo({
+          name: store.name || storeName,
+          email: store.email || "",
+          address: store.address || "",
+          phone: store.phone || "",
+          categories: Array.isArray(store.categories) ? store.categories : [],
+        });
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load store details";
+        setStoreInfoError(msg);
+      } finally {
+        setStoreInfoLoading(false);
+      }
+    };
+
+    fetchStoreDetails();
+  }, [storeId, storeName]);
+
+  // Handle store info changes
+  const handleStoreInfoChange = (e) => {
+    const { name, value } = e.target;
+    setStoreInfo((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setStoreInfoError("");
+    setStoreInfoSuccess("");
+  };
+
+  // Handle categories change
+  const handleCategoriesChange = (e) => {
+    const { value, checked } = e.target;
+    setStoreInfo((prev) => {
+      const categories = checked
+        ? [...prev.categories, value]
+        : prev.categories.filter((cat) => cat !== value);
+      return { ...prev, categories };
+    });
+  };
+
+  // Save store info
+  const handleSaveStoreInfo = async (e) => {
+    e.preventDefault();
+    setStoreInfoError("");
+    setStoreInfoSuccess("");
+
+    if (!storeInfo.name.trim()) {
+      setStoreInfoError("Store name is required");
+      return;
+    }
+
+    if (!storeInfo.email.trim()) {
+      setStoreInfoError("Email is required");
+      return;
+    }
+
+    if (!storeInfo.phone.trim()) {
+      setStoreInfoError("Phone is required");
+      return;
+    }
+
+    setStoreInfoLoading(true);
+
+    try {
+      await updateStoreSettings(storeId, {
+        name: storeInfo.name,
+        email: storeInfo.email,
+        address: storeInfo.address,
+        phone: storeInfo.phone,
+        categories: storeInfo.categories,
+      });
+
+      localStorage.setItem("storeName", storeInfo.name);
+      setStoreInfoSuccess("Store settings updated successfully!");
+      setStoreInfoEditing(false);
+
+      setTimeout(() => setStoreInfoSuccess(""), 3000);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to update store settings";
+      setStoreInfoError(msg);
+    } finally {
+      setStoreInfoLoading(false);
+    }
+  };
+
+  // Handle password changes
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setPasswordError("");
+    setPasswordSuccess("");
+  };
+
+  // Change password
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!passwordData.currentPassword) {
+      setPasswordError("Current password is required");
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      setPasswordError("New password is required");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      await updateStorePassword(storeId, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
+      });
+
+      setPasswordSuccess("Password changed successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setTimeout(() => setPasswordSuccess(""), 3000);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to change password";
+      setPasswordError(msg);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // Delete store
+  const handleDeleteStore = async () => {
+    setDeleteError("");
+    setDeleteLoading(true);
+
+    try {
+      await deleteStore(storeId);
+      localStorage.clear();
+      window.location.href = "/";
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to delete store";
+      setDeleteError(msg);
+      setDeleteLoading(false);
+    }
+  };
+
+  return (
+    <div className="settings-page">
+      <div className="settings-header">
+        <h1>Store Settings</h1>
+        <p>Manage your store information, security, and preferences</p>
+      </div>
+
+      <div className="settings-container">
+        {/* Store Information Section */}
+        <div className="settings-section">
+          <div className="section-header">
+            <h2>Store Information</h2>
+            {!storeInfoEditing && (
+              <button
+                className="btn-edit"
+                onClick={() => setStoreInfoEditing(true)}
+                disabled={storeInfoLoading}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {storeInfoError && <div className="alert alert-error">{storeInfoError}</div>}
+          {storeInfoSuccess && <div className="alert alert-success">{storeInfoSuccess}</div>}
+
+          {storeInfoLoading && !storeInfoEditing ? (
+            <div className="loading-spinner">
+              <div className="spinner"></div>
+              <p>Loading store details...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveStoreInfo} className="settings-form">
+              <div className="form-group">
+                <label htmlFor="name">Store Name *</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={storeInfo.name}
+                  onChange={handleStoreInfoChange}
+                  disabled={!storeInfoEditing || storeInfoLoading}
+                  placeholder="Enter store name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="email">Email Address *</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={storeInfo.email}
+                  onChange={handleStoreInfoChange}
+                  disabled={!storeInfoEditing || storeInfoLoading}
+                  placeholder="Enter email"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="phone">Phone Number *</label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={storeInfo.phone}
+                  onChange={handleStoreInfoChange}
+                  disabled={!storeInfoEditing || storeInfoLoading}
+                  placeholder="Enter phone number"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="address">Address</label>
+                <textarea
+                  id="address"
+                  name="address"
+                  value={storeInfo.address}
+                  onChange={handleStoreInfoChange}
+                  disabled={!storeInfoEditing || storeInfoLoading}
+                  placeholder="Enter store address"
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Categories</label>
+                <div className="categories-grid">
+                  {["electronics", "clothing", "food", "books", "accessories", "home"].map(
+                    (category) => (
+                      <label key={category} className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          value={category}
+                          checked={storeInfo.categories.includes(category)}
+                          onChange={handleCategoriesChange}
+                          disabled={!storeInfoEditing || storeInfoLoading}
+                        />
+                        <span className="checkbox-text">{category}</span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {storeInfoEditing && (
+                <div className="form-actions">
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={storeInfoLoading}
+                  >
+                    {storeInfoLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setStoreInfoEditing(false)}
+                    disabled={storeInfoLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+
+        {/* Change Password Section */}
+        <div className="settings-section">
+          <div className="section-header">
+            <h2>Security</h2>
+          </div>
+
+          {passwordError && <div className="alert alert-error">{passwordError}</div>}
+          {passwordSuccess && <div className="alert alert-success">{passwordSuccess}</div>}
+
+          <form onSubmit={handleChangePassword} className="settings-form">
+            <div className="form-group">
+              <label htmlFor="currentPassword">Current Password *</label>
+              <input
+                type="password"
+                id="currentPassword"
+                name="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={handlePasswordChange}
+                placeholder="Enter current password"
+                disabled={passwordLoading}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="newPassword">New Password *</label>
+              <input
+                type="password"
+                id="newPassword"
+                name="newPassword"
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                placeholder="Enter new password (min 6 characters)"
+                disabled={passwordLoading}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm Password *</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
+                placeholder="Confirm new password"
+                disabled={passwordLoading}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={passwordLoading}
+            >
+              {passwordLoading ? "Updating..." : "Change Password"}
+            </button>
+          </form>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="settings-section danger-zone">
+          <div className="section-header">
+            <h2>Danger Zone</h2>
+          </div>
+
+          {deleteError && <div className="alert alert-error">{deleteError}</div>}
+
+          <p className="danger-description">
+            Deleting your store is permanent and cannot be undone. All your products and store data will be lost.
+          </p>
+
+          {!deleteConfirm ? (
+            <button
+              className="btn-delete"
+              onClick={() => setDeleteConfirm(true)}
+              disabled={deleteLoading}
+            >
+              Delete Store
+            </button>
+          ) : (
+            <div className="delete-confirmation">
+              <p className="confirmation-message">
+                Are you sure you want to delete your store? This action cannot be undone.
+              </p>
+              <div className="confirmation-actions">
+                <button
+                  className="btn-delete"
+                  onClick={handleDeleteStore}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? "Deleting..." : "Yes, Delete Store"}
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setDeleteConfirm(false)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default SettingsPage;

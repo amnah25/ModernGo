@@ -168,7 +168,7 @@ function LoginForm() {
       </button>
 
       <p className="login-link">
-        Don’t have an account? <Link to="/store/signup">Sign Up</Link>
+        Don't have an account? <Link to="/store/signup">Sign Up</Link>
       </p>
     </form>
   );

@@ -12,8 +12,34 @@
   background: white;
   padding: 25px;
   border-radius: 12px;
-  width: 340px;
+  width: 100%;
+  max-width: 340px;
   text-align: center;
+}
+
+@media (max-width: 480px) {
+  .confirm-modal {
+    padding: 20px;
+    max-width: 90%;
+    margin: 10px;
+    border-radius: 10px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-cancel,
+  .btn-delete {
+    width: 100%;
+  }
+}
+
+@media (max-width: 375px) {
+  .confirm-modal {
+    padding: 16px;
+  }
 }
 
 .confirm-modal h3 {

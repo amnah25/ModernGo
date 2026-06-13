@@ -1,6 +1,5 @@
 import api from "./api";
 
-// ========== PRODUCT MANAGEMENT (Store Owner) ==========
 export const createProduct = (formData) =>
   api.post("/products", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -20,7 +19,18 @@ export const freezeProduct = (productId) =>
 export const restoreProduct = (productId) =>
   api.patch(`/products/${productId}/restore`);
 
-// ========== PRODUCT QUERIES (Public) ==========
+export const addProductToStore = (storeId, data) =>
+  api.post(`/stores/${storeId}/products`, data);
+
+export const updateStoreProduct = (storeId, productId, data) =>
+  api.patch(`/stores/${storeId}/products/${productId}`, data);
+
+export const removeProductFromStore = (storeId, productId) =>
+  api.delete(`/stores/${storeId}/products/${productId}`);
+
+export const getStoreProducts = (storeId) =>
+  api.get(`/stores/${storeId}/products`);
+
 export const getProductStores = (productId) =>
   api.get(`/products/${productId}/stores`);
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../../../services/api";
+import { validateRequired, parseApiErrors } from "../../../../services/validationUtils";
+import FormFieldError from "../../components/forms/FormFieldError";
 import "../styles/modal.css";
 
 export default function AddProductModal({ isOpen, onClose, onAdd, initialData }) {
@@ -15,28 +17,44 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({
+    name: "",
+    description: "",
+    mainPrice: "",
+    stock: "",
+    discountPercent: "",
+    slug: "",
+    general: "",
+  });
 
   const isEdit = Boolean(initialData);
   const base = (api?.defaults?.baseURL || "").replace(/\/api\/?$/, "");
 
-  const resolveImg = (raw) => {
-    if (!raw) return "";
-    if (
-      raw.startsWith("http") ||
-      raw.startsWith("blob:") ||
-      raw.startsWith("data:")
-    ) {
-      return raw;
-    }
-    return `${base}${raw.startsWith("/") ? "" : "/"}${raw}`;
-  };
-
   useEffect(() => {
     if (!isOpen) return;
 
-    setError("");
+    setFieldErrors({
+      name: "",
+      description: "",
+      mainPrice: "",
+      stock: "",
+      discountPercent: "",
+      slug: "",
+      general: "",
+    });
     setLoading(false);
+
+    const resolveImg = (raw) => {
+      if (!raw) return "";
+      if (
+        raw.startsWith("http") ||
+        raw.startsWith("blob:") ||
+        raw.startsWith("data:")
+      ) {
+        return raw;
+      }
+      return `${base}${raw.startsWith("/") ? "" : "/"}${raw}`;
+    };
 
     if (initialData) {
       const prod = initialData?.productId || initialData;
@@ -66,7 +84,7 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
       imageFile: null,
       imagePreview: "",
     });
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, base]);
 
   useEffect(() => {
     return () => {
@@ -79,20 +97,45 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setError("");
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: "", general: "" }));
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    let error = "";
+
+    if (name === "name") {
+      error = validateRequired(value, "Product Name");
+    } else if (name === "description") {
+      error = validateRequired(value, "Description");
+    } else if (name === "mainPrice") {
+      const num = Number(value);
+      error = !Number.isFinite(num) || num <= 0 ? "Price must be a valid positive number" : "";
+    } else if (name === "stock") {
+      const num = Number(value);
+      error = !Number.isFinite(num) || num < 0 ? "Stock must be a valid non-negative number" : "";
+    } else if (name === "discountPercent") {
+      const num = Number(value);
+      error = !Number.isFinite(num) || num < 0 ? "Discount must be a valid non-negative number" : "";
+    } else if (name === "slug") {
+      error = validateRequired(value, "Slug");
+    }
+
+    if (error) {
+      setFieldErrors((prev) => ({ ...prev, [name]: error }));
+    }
   };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const preview = URL.createObjectURL(file);
-
     setForm((prev) => ({
       ...prev,
       imageFile: file,
-      imagePreview: preview,
+      imagePreview: URL.createObjectURL(file),
     }));
   };
 
@@ -107,32 +150,52 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
       .replace(/(^-|-$)/g, "");
   };
 
+  const validateForm = () => {
+    const errors = {};
+
+    const mainPrice = Number(form.mainPrice);
+    const stock = Number(form.stock);
+    const discountPercent = Number(form.discountPercent);
+
+    errors.name = validateRequired(form.name, "Product Name");
+    errors.description = validateRequired(form.description, "Description");
+    errors.mainPrice = !Number.isFinite(mainPrice) || mainPrice <= 0
+      ? "Price must be a valid positive number"
+      : "";
+    errors.stock = !Number.isFinite(stock) || stock < 0
+      ? "Stock must be a valid non-negative number"
+      : "";
+    errors.discountPercent = !Number.isFinite(discountPercent) || discountPercent < 0
+      ? "Discount must be a valid non-negative number"
+      : "";
+    errors.slug = validateRequired(buildSlug(form.name, form.slug), "Slug");
+
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const storeId = localStorage.getItem("storeId");
     if (!storeId) {
-      setError("Missing storeId. Please login again.");
+      setFieldErrors((prev) => ({ ...prev, general: "Missing storeId. Please login again." }));
+      return;
+    }
+
+    // Validate form
+    const errors = validateForm();
+    if (Object.values(errors).some((err) => err)) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
       return;
     }
 
     setLoading(true);
-    setError("");
+    setFieldErrors((prev) => ({ ...prev, general: "" }));
 
     try {
       const mainPrice = Number(form.mainPrice);
       const stock = Number(form.stock);
       const discountPercent = Number(form.discountPercent);
-
-      if (!Number.isFinite(mainPrice) || mainPrice <= 0) {
-        throw new Error("Invalid price");
-      }
-      if (!Number.isFinite(stock) || stock < 0) {
-        throw new Error("Invalid stock");
-      }
-      if (!Number.isFinite(discountPercent) || discountPercent < 0) {
-        throw new Error("Invalid discount");
-      }
 
       if (!isEdit) {
         const fd = new FormData();
@@ -183,7 +246,10 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
         initialData?.productId ||
         initialData?._id;
 
-      if (!productId) throw new Error("Missing productId for edit");
+      if (!productId) {
+        setFieldErrors((prev) => ({ ...prev, general: "Missing productId for edit" }));
+        return;
+      }
 
       await api.patch(`/products/${productId}`, {
         name: form.name.trim(),
@@ -213,15 +279,20 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
     } catch (err) {
       console.log("SAVE PRODUCT ERROR =>", err?.response?.data || err);
 
-      const server = err?.response?.data;
+      const apiErrors = parseApiErrors(err);
 
-      const msg =
-        server?.message ||
-        server?.error ||
-        err?.message ||
-        "something went wrong";
+      if (Object.keys(apiErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...apiErrors }));
+      } else {
+        const server = err?.response?.data;
+        const msg =
+          server?.message ||
+          server?.error ||
+          err?.message ||
+          "Something went wrong";
 
-      setError(msg);
+        setFieldErrors((prev) => ({ ...prev, general: msg }));
+      }
     } finally {
       setLoading(false);
     }
@@ -238,13 +309,35 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
         </div>
 
         <form className="modal-body" onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="field">
-              <span>Name</span>
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </div>
+          <div className={`field ${fieldErrors.name ? "has-error" : ""}`}>
+            <span>Name</span>
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={fieldErrors.name ? "input-error" : ""}
+              required
+            />
+            {fieldErrors.name && <FormFieldError error={fieldErrors.name} />}
+          </div>
 
-            <div className="field">
+          <div className={`field ${fieldErrors.description ? "has-error" : ""}`}>
+            <span>Description</span>
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={fieldErrors.description ? "input-error" : ""}
+              required
+              rows="3"
+            />
+            {fieldErrors.description && <FormFieldError error={fieldErrors.description} />}
+          </div>
+
+          <div className="form-row">
+            <div className={`field ${fieldErrors.mainPrice ? "has-error" : ""}`}>
               <span>Price</span>
               <input
                 name="mainPrice"
@@ -252,55 +345,56 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
                 step="0.01"
                 value={form.mainPrice}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.mainPrice ? "input-error" : ""}
                 required
               />
+              {fieldErrors.mainPrice && <FormFieldError error={fieldErrors.mainPrice} />}
             </div>
-          </div>
 
-          <div className="field">
-            <span>Description</span>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              required
-              rows="3"
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="field">
+            <div className={`field ${fieldErrors.stock ? "has-error" : ""}`}>
               <span>Stock</span>
               <input
                 name="stock"
                 type="number"
                 value={form.stock}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.stock ? "input-error" : ""}
                 required
               />
+              {fieldErrors.stock && <FormFieldError error={fieldErrors.stock} />}
             </div>
+          </div>
 
-            <div className="field">
+          <div className="form-row">
+            <div className={`field ${fieldErrors.discountPercent ? "has-error" : ""}`}>
               <span>Discount %</span>
               <input
                 name="discountPercent"
                 type="number"
                 value={form.discountPercent}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.discountPercent ? "input-error" : ""}
                 required
               />
+              {fieldErrors.discountPercent && <FormFieldError error={fieldErrors.discountPercent} />}
             </div>
-          </div>
 
-          <div className="field">
-            <span>Slug</span>
-            <input
-              name="slug"
-              value={form.slug}
-              onChange={handleChange}
-              placeholder="wireless-bt-headphones"
-              required
-            />
+            <div className={`field ${fieldErrors.slug ? "has-error" : ""}`}>
+              <span>Slug</span>
+              <input
+                name="slug"
+                value={form.slug}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.slug ? "input-error" : ""}
+                placeholder="wireless-bt-headphones"
+                required
+              />
+              {fieldErrors.slug && <FormFieldError error={fieldErrors.slug} />}
+            </div>
           </div>
 
           <div className="field">
@@ -316,7 +410,7 @@ export default function AddProductModal({ isOpen, onClose, onAdd, initialData })
             )}
           </div>
 
-          {error && <p className="error-text">{error}</p>}
+          {fieldErrors.general && <p className="error-text">{fieldErrors.general}</p>}
 
           <div className="modal-footer">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>

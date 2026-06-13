@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../../../services/api";
 import { updateStoreSettings, updateStorePassword, deleteStore } from "../../../../services/storeSettingsApi";
+import { validateRequired, validateEmail, validatePassword, validatePhoneNumber, parseApiErrors } from "../../../../services/validationUtils";
+import FormFieldError from "../../components/forms/FormFieldError";
 import "../styles/settings.css";
 
 function SettingsPage() {
@@ -16,9 +18,15 @@ function SettingsPage() {
     categories: [],
   });
   const [storeInfoLoading, setStoreInfoLoading] = useState(true);
-  const [storeInfoError, setStoreInfoError] = useState("");
   const [storeInfoSuccess, setStoreInfoSuccess] = useState("");
   const [storeInfoEditing, setStoreInfoEditing] = useState(false);
+
+  // Store Info Field Errors
+  const [storeInfoFieldErrors, setStoreInfoFieldErrors] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
   // Password Change Form State
   const [passwordData, setPasswordData] = useState({
@@ -27,8 +35,14 @@ function SettingsPage() {
     confirmPassword: "",
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // Password Field Errors
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   // Delete Store State
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -38,14 +52,14 @@ function SettingsPage() {
   // Fetch store details on mount
   useEffect(() => {
     if (!storeId) {
-      setStoreInfoError("Missing storeId. Please login again.");
+      setStoreInfoFieldErrors((prev) => ({ ...prev, name: "Missing storeId. Please login again." }));
       setStoreInfoLoading(false);
       return;
     }
 
     const fetchStoreDetails = async () => {
       setStoreInfoLoading(true);
-      setStoreInfoError("");
+      setStoreInfoFieldErrors({ name: "", email: "", phone: "" });
 
       try {
         const res = await api.get(`/stores/${storeId}`);
@@ -64,7 +78,7 @@ function SettingsPage() {
           err?.response?.data?.error ||
           err?.message ||
           "Failed to load store details";
-        setStoreInfoError(msg);
+        setStoreInfoFieldErrors((prev) => ({ ...prev, name: msg }));
       } finally {
         setStoreInfoLoading(false);
       }
@@ -80,7 +94,7 @@ function SettingsPage() {
       ...prev,
       [name]: value,
     }));
-    setStoreInfoError("");
+    setStoreInfoFieldErrors((prev) => ({ ...prev, [name]: "" }));
     setStoreInfoSuccess("");
   };
 
@@ -95,28 +109,29 @@ function SettingsPage() {
     });
   };
 
+  // Validate store info form
+  const validateStoreInfo = () => {
+    const errors = {};
+
+    errors.name = validateRequired(storeInfo.name, "Store Name");
+    errors.email = validateEmail(storeInfo.email);
+    errors.phone = validatePhoneNumber(storeInfo.phone);
+
+    return errors;
+  };
+
   // Save store info
   const handleSaveStoreInfo = async (e) => {
     e.preventDefault();
-    setStoreInfoError("");
-    setStoreInfoSuccess("");
 
-    if (!storeInfo.name.trim()) {
-      setStoreInfoError("Store name is required");
-      return;
-    }
-
-    if (!storeInfo.email.trim()) {
-      setStoreInfoError("Email is required");
-      return;
-    }
-
-    if (!storeInfo.phone.trim()) {
-      setStoreInfoError("Phone is required");
+    const errors = validateStoreInfo();
+    if (Object.values(errors).some((err) => err)) {
+      setStoreInfoFieldErrors(errors);
       return;
     }
 
     setStoreInfoLoading(true);
+    setStoreInfoSuccess("");
 
     try {
       await updateStoreSettings(storeId, {
@@ -133,12 +148,18 @@ function SettingsPage() {
 
       setTimeout(() => setStoreInfoSuccess(""), 3000);
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to update store settings";
-      setStoreInfoError(msg);
+      const apiErrors = parseApiErrors(err);
+
+      if (Object.keys(apiErrors).length > 0) {
+        setStoreInfoFieldErrors((prev) => ({ ...prev, ...apiErrors }));
+      } else {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to update store settings";
+        setStoreInfoFieldErrors((prev) => ({ ...prev, name: msg }));
+      }
     } finally {
       setStoreInfoLoading(false);
     }
@@ -151,37 +172,37 @@ function SettingsPage() {
       ...prev,
       [name]: value,
     }));
-    setPasswordError("");
+    setPasswordFieldErrors((prev) => ({ ...prev, [name]: "" }));
     setPasswordSuccess("");
+  };
+
+  // Validate password form
+  const validatePasswordForm = () => {
+    const errors = {};
+
+    errors.currentPassword = validateRequired(passwordData.currentPassword, "Current Password");
+    errors.newPassword = validatePassword(passwordData.newPassword, 6);
+    errors.confirmPassword = validateRequired(passwordData.confirmPassword, "Confirm Password");
+
+    if (passwordData.newPassword && passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+
+    return errors;
   };
 
   // Change password
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    setPasswordError("");
-    setPasswordSuccess("");
 
-    if (!passwordData.currentPassword) {
-      setPasswordError("Current password is required");
-      return;
-    }
-
-    if (!passwordData.newPassword) {
-      setPasswordError("New password is required");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters");
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("Passwords do not match");
+    const errors = validatePasswordForm();
+    if (Object.values(errors).some((err) => err)) {
+      setPasswordFieldErrors(errors);
       return;
     }
 
     setPasswordLoading(true);
+    setPasswordSuccess("");
 
     try {
       await updateStorePassword(storeId, {
@@ -199,12 +220,18 @@ function SettingsPage() {
 
       setTimeout(() => setPasswordSuccess(""), 3000);
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to change password";
-      setPasswordError(msg);
+      const apiErrors = parseApiErrors(err);
+
+      if (Object.keys(apiErrors).length > 0) {
+        setPasswordFieldErrors((prev) => ({ ...prev, ...apiErrors }));
+      } else {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to change password";
+        setPasswordFieldErrors((prev) => ({ ...prev, currentPassword: msg }));
+      }
     } finally {
       setPasswordLoading(false);
     }
@@ -253,8 +280,11 @@ function SettingsPage() {
             )}
           </div>
 
-          {storeInfoError && <div className="alert alert-error">{storeInfoError}</div>}
-          {storeInfoSuccess && <div className="alert alert-success">{storeInfoSuccess}</div>}
+          {storeInfoSuccess && (
+            <div className="alert alert-success">
+              <span>✓</span> {storeInfoSuccess}
+            </div>
+          )}
 
           {storeInfoLoading && !storeInfoEditing ? (
             <div className="loading-spinner">
@@ -263,7 +293,7 @@ function SettingsPage() {
             </div>
           ) : (
             <form onSubmit={handleSaveStoreInfo} className="settings-form">
-              <div className="form-group">
+              <div className={`form-group ${storeInfoFieldErrors.name ? "has-error" : ""}`}>
                 <label htmlFor="name">Store Name *</label>
                 <input
                   type="text"
@@ -271,13 +301,18 @@ function SettingsPage() {
                   name="name"
                   value={storeInfo.name}
                   onChange={handleStoreInfoChange}
+                  onBlur={(e) => {
+                    const error = validateRequired(e.target.value, "Store Name");
+                    if (error) setStoreInfoFieldErrors(prev => ({ ...prev, name: error }));
+                  }}
                   disabled={!storeInfoEditing || storeInfoLoading}
                   placeholder="Enter store name"
                   required
                 />
+                {storeInfoFieldErrors.name && <FormFieldError error={storeInfoFieldErrors.name} />}
               </div>
 
-              <div className="form-group">
+              <div className={`form-group ${storeInfoFieldErrors.email ? "has-error" : ""}`}>
                 <label htmlFor="email">Email Address *</label>
                 <input
                   type="email"
@@ -285,13 +320,18 @@ function SettingsPage() {
                   name="email"
                   value={storeInfo.email}
                   onChange={handleStoreInfoChange}
+                  onBlur={(e) => {
+                    const error = validateEmail(e.target.value);
+                    if (error) setStoreInfoFieldErrors(prev => ({ ...prev, email: error }));
+                  }}
                   disabled={!storeInfoEditing || storeInfoLoading}
                   placeholder="Enter email"
                   required
                 />
+                {storeInfoFieldErrors.email && <FormFieldError error={storeInfoFieldErrors.email} />}
               </div>
 
-              <div className="form-group">
+              <div className={`form-group ${storeInfoFieldErrors.phone ? "has-error" : ""}`}>
                 <label htmlFor="phone">Phone Number *</label>
                 <input
                   type="tel"
@@ -299,10 +339,15 @@ function SettingsPage() {
                   name="phone"
                   value={storeInfo.phone}
                   onChange={handleStoreInfoChange}
+                  onBlur={(e) => {
+                    const error = validatePhoneNumber(e.target.value);
+                    if (error) setStoreInfoFieldErrors(prev => ({ ...prev, phone: error }));
+                  }}
                   disabled={!storeInfoEditing || storeInfoLoading}
                   placeholder="Enter phone number"
                   required
                 />
+                {storeInfoFieldErrors.phone && <FormFieldError error={storeInfoFieldErrors.phone} />}
               </div>
 
               <div className="form-group">
@@ -350,7 +395,10 @@ function SettingsPage() {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setStoreInfoEditing(false)}
+                    onClick={() => {
+                      setStoreInfoEditing(false);
+                      setStoreInfoFieldErrors({ name: "", email: "", phone: "" });
+                    }}
                     disabled={storeInfoLoading}
                   >
                     Cancel
@@ -367,11 +415,14 @@ function SettingsPage() {
             <h2>Security</h2>
           </div>
 
-          {passwordError && <div className="alert alert-error">{passwordError}</div>}
-          {passwordSuccess && <div className="alert alert-success">{passwordSuccess}</div>}
+          {passwordSuccess && (
+            <div className="alert alert-success">
+              <span>✓</span> {passwordSuccess}
+            </div>
+          )}
 
           <form onSubmit={handleChangePassword} className="settings-form">
-            <div className="form-group">
+            <div className={`form-group ${passwordFieldErrors.currentPassword ? "has-error" : ""}`}>
               <label htmlFor="currentPassword">Current Password *</label>
               <input
                 type="password"
@@ -379,13 +430,18 @@ function SettingsPage() {
                 name="currentPassword"
                 value={passwordData.currentPassword}
                 onChange={handlePasswordChange}
+                onBlur={(e) => {
+                  const error = validateRequired(e.target.value, "Current Password");
+                  if (error) setPasswordFieldErrors(prev => ({ ...prev, currentPassword: error }));
+                }}
                 placeholder="Enter current password"
                 disabled={passwordLoading}
                 required
               />
+              {passwordFieldErrors.currentPassword && <FormFieldError error={passwordFieldErrors.currentPassword} />}
             </div>
 
-            <div className="form-group">
+            <div className={`form-group ${passwordFieldErrors.newPassword ? "has-error" : ""}`}>
               <label htmlFor="newPassword">New Password *</label>
               <input
                 type="password"
@@ -393,13 +449,18 @@ function SettingsPage() {
                 name="newPassword"
                 value={passwordData.newPassword}
                 onChange={handlePasswordChange}
+                onBlur={(e) => {
+                  const error = validatePassword(e.target.value, 6);
+                  if (error) setPasswordFieldErrors(prev => ({ ...prev, newPassword: error }));
+                }}
                 placeholder="Enter new password (min 6 characters)"
                 disabled={passwordLoading}
                 required
               />
+              {passwordFieldErrors.newPassword && <FormFieldError error={passwordFieldErrors.newPassword} />}
             </div>
 
-            <div className="form-group">
+            <div className={`form-group ${passwordFieldErrors.confirmPassword ? "has-error" : ""}`}>
               <label htmlFor="confirmPassword">Confirm Password *</label>
               <input
                 type="password"
@@ -407,10 +468,18 @@ function SettingsPage() {
                 name="confirmPassword"
                 value={passwordData.confirmPassword}
                 onChange={handlePasswordChange}
+                onBlur={(e) => {
+                  let error = validateRequired(e.target.value, "Confirm Password");
+                  if (!error && passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
+                    error = "Passwords do not match";
+                  }
+                  if (error) setPasswordFieldErrors(prev => ({ ...prev, confirmPassword: error }));
+                }}
                 placeholder="Confirm new password"
                 disabled={passwordLoading}
                 required
               />
+              {passwordFieldErrors.confirmPassword && <FormFieldError error={passwordFieldErrors.confirmPassword} />}
             </div>
 
             <button
@@ -429,7 +498,11 @@ function SettingsPage() {
             <h2>Danger Zone</h2>
           </div>
 
-          {deleteError && <div className="alert alert-error">{deleteError}</div>}
+          {deleteError && (
+            <div className="alert alert-error">
+              <span>⚠️</span> {deleteError}
+            </div>
+          )}
 
           <p className="danger-description">
             Deleting your store is permanent and cannot be undone. All your products and store data will be lost.

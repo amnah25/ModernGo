@@ -120,6 +120,31 @@ export default function StoreDashboardLayout() {
           <p className="sidebar-section-title">Settings</p>
 
           <NavLink
+            to="/store/dashboard/profile"
+            className={({ isActive }) =>
+              isActive ? "sidebar-link active" : "sidebar-link"
+            }
+          >
+            <span className="sidebar-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="sidebar-svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.786 0-5.433-.648-7.951-1.827a1.75 1.75 0 0 1-.08-1.047l.324-.647A6.99 6.99 0 0 1 4.5 10.5v-.75c0-1.219.984-2.31 2.25-2.625V6A2.25 2.25 0 0 1 9 3.75h6A2.25 2.25 0 0 1 17.25 6v.125c1.266.315 2.25 1.405 2.25 2.625v.75a6.99 6.99 0 0 1-1.075 3.423l.324.647a1.75 1.75 0 0 1-.08 1.047 17.933 17.933 0 0 1-2.548 2.495l-.324-.647a5.25 5.25 0 0 0-2.776-1.122H9.168a5.25 5.25 0 0 0-2.776 1.122l-.324.647Z"
+                />
+              </svg>
+            </span>
+            <span className="sidebar-text">Profile</span>
+          </NavLink>
+
+          <NavLink
             to="/store/dashboard/settings"
             className={({ isActive }) =>
               isActive ? "sidebar-link active" : "sidebar-link"

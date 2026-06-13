@@ -1,22 +1,46 @@
 .footer {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
   color: #737373;
   padding: 40px;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr auto;
   gap: 40px;
+  align-items: flex-start;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.footer-brand p {
-  font-size: 13px;
-  margin-top: 10px;
-  line-height: 1.6;
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.footer-logo {
-  font-size: 22px;
-  font-weight: bold;
+.footer-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-logo-img {
+  width: 52px;
+  height: 34px;
+  object-fit: contain;
+  display: inline;
+  vertical-align: middle;
+}
+
+.footer-logo-text {
+  font-size: 20px;
+  font-weight: 800;
   color: #3B983B;
+  line-height: 1;
+}
+
+.footer-description {
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.6;
 }
 
 .footer-links h4,
@@ -24,6 +48,12 @@
   color: #3B983B;
   margin-bottom: 15px;
   font-size: 15px;
+  transition: color 0.25s ease;
+}
+
+.footer-links:hover h4,
+.footer-contact:hover h4 {
+  color: #2d7a2d;
 }
 
 .footer-links ul {
@@ -32,45 +62,169 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .footer-links a {
   text-decoration: none;
   color: #737373;
   font-size: 14px;
-  transition: color 0.3s;
+  transition: all 0.25s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: #3b983b;
+  transition: width 0.25s ease;
 }
 
 .footer-links a:hover {
-  color: #3B983B;
+  color: #3b983b;
+  transform: translateX(3px);
+}
+
+.footer-links a:hover::after {
+  width: 100%;
 }
 
 .footer-contact p {
   font-size: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+
+.footer-contact p:hover {
+  color: #3b983b;
+  transform: translateX(3px);
+}
+
+.contact-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.footer-contact p:hover .contact-icon {
+  transform: scale(1.15);
 }
 
 .footer-social {
   display: flex;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
-.footer-social a {
-  font-size: 20px;
-  transition: color 0.3s;
+.social-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 18px;
+  color: #6b7280;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   text-decoration: none;
 }
 
-.footer-social a:hover {
-  color: #3B983B;
+.social-icon:hover {
+  transform: translateY(-3px);
+  color: #3b983b;
+  background: rgba(59, 152, 59, 0.08);
+}
+
+.social-icon.facebook:hover {
+  color: #1877f2;
+  background: #f0f8ff;
+}
+
+.social-icon.instagram:hover {
+  color: #e4405f;
+  background: #fff0f2;
+}
+
+.social-icon.twitter:hover {
+  color: #1da1f2;
+  background: #eff7ff;
+}
+
+.social-icon.linkedin:hover {
+  color: #0077b5;
+  background: #f0f8ff;
+}
+
+.social-icon.youtube:hover {
+  color: #ff0000;
+  background: #fff5f5;
 }
 
 .footer-bottom {
-  background: #ffffff;
+  background: #f8f9fa;
   text-align: center;
   padding: 15px;
   font-size: 13px;
   color: #3B983B;
+}
+
+@media (max-width: 1024px) {
+  .footer {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    grid-template-columns: 1fr 1fr;
+    padding: 24px 20px;
+    gap: 24px;
+  }
+
+  .footer-social {
+    grid-column: span 2;
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer {
+    grid-template-columns: 1fr;
+    padding: 20px 16px;
+    gap: 20px;
+  }
+
+  .footer-logo-img {
+    width: 42px;
+    height: 26px;
+  }
+
+  .footer-logo-text {
+    font-size: 18px;
+  }
+
+  .footer-links h4,
+  .footer-contact h4 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .footer-description {
+    font-size: 12px;
+  }
+
+  .footer-social {
+    grid-column: span 1;
+  }
 }

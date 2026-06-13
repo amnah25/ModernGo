@@ -25,7 +25,7 @@ function Navbar() {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
-       setOpen(false);
+        setOpen(false);
       }
     };
 
@@ -82,22 +82,9 @@ function Navbar() {
 
             {open && (
               <div className="store-dropdown">
-                <button 
-                  type="button" 
-                  className="dropdown-item"
-                  onClick={() => {
-                    navigate("/store/dashboard/profile");
-                    setOpen(false);
-                  }}
-                >
-                  Profile
-                </button>
-
-                <div className="dropdown-sep" />
-
                 <button
                   type="button"
-                  className="dropdown-item danger"
+                  className="dropdown-item logout-item"
                   onClick={handleLogout}
                 >
                   Log out

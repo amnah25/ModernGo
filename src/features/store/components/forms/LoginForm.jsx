@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import { storeLogin } from "../../../../services/storeAuthApi";
+import { storeLogin } from "../../../../services/store";
 import { validateEmail, validateRequired, parseApiErrors } from "../../../../services/validationUtils";
 import FormFieldError from "./FormFieldError";
 
@@ -137,30 +137,32 @@ function LoginForm() {
         {fieldErrors.email && <FormFieldError error={fieldErrors.email} />}
       </div>
 
-      <div className={`form-group password-field ${fieldErrors.password ? "has-error" : ""}`}>
-        <input
-          type={showPassword ? "text" : "password"}
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          className={fieldErrors.password ? "input-error" : ""}
-          required
-        />
-        <span
-          className="toggle-password"
-          onClick={() => setShowPassword((prev) => !prev)}
-        >
-          {showPassword ? <FiEyeOff /> : <FiEye />}
-        </span>
+      <div className={`form-field ${fieldErrors.password ? "has-error" : ""}`}>
+        <div className="password-field">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className={fieldErrors.password ? "input-error" : ""}
+            required
+          />
+          <button
+            type="button"
+            className="toggle-password"
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <FiEyeOff /> : <FiEye />}
+          </button>
+        </div>
         {fieldErrors.password && <FormFieldError error={fieldErrors.password} />}
       </div>
 
       {fieldErrors.general && (
-        <div style={{ marginBottom: "12px", padding: "10px", background: "#fee2e2", color: "#991b1b", borderRadius: "6px", fontSize: "13px", border: "1px solid #fecac8" }}>
-          {fieldErrors.general}
-        </div>
+        <div className="login-error-alert">{fieldErrors.general}</div>
       )}
 
       <button type="submit" className="login-btn" disabled={loading}>

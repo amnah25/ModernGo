@@ -81,7 +81,7 @@ function ChangeMapView({ position }) {
   return null;
 }
 
-export default function LocationPicker({ setLocation }) {
+export default function LocationPicker({ setLocation, onClearError }) {
   const [userPosition, setUserPosition] = useState([30.0444, 31.2357]);
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [tempLocation, setTempLocation] = useState(null);
@@ -116,6 +116,7 @@ export default function LocationPicker({ setLocation }) {
           label: "Current Location",
         });
         setMode("auto");
+        onClearError?.();
       },
       (error) => {
         console.log("Location permission denied", error);
@@ -127,6 +128,7 @@ export default function LocationPicker({ setLocation }) {
     setMode("manual");
     setTempLocation(null);
     setSelectedPosition(null);
+    onClearError?.();
   };
 
   const handleConfirmLocation = () => {

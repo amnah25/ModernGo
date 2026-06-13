@@ -1,63 +1,66 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "../../../../services/api";
-import { updateStoreSettings, updateStorePassword } from "../../../../services/storeSettingsApi";
-import { validateEmail, validateRequired, validatePhoneNumber, validatePassword, validatePasswordMatch, parseApiErrors } from "../../../../services/validationUtils";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { getStoreProfile, updateStoreProfile, uploadProfileImage, deleteProfileImage } from "../../../../services/storeSettingsApi";
+import { validateEmail, validateRequired, validatePhoneNumber, validateImageFile, parseApiErrors } from "../../../../services/validationUtils";
 import FormFieldError from "../../components/forms/FormFieldError";
 import "../styles/profile.css";
 
 function ProfilePage() {
   const storeId = useMemo(() => localStorage.getItem("storeId"), []);
   const storeName = localStorage.getItem("storeName") || "";
+  const fileInputRef = useRef(null);
+  const changePhotoInputRef = useRef(null);
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
-    name: "",
+    fullName: "",
+    username: "",
     email: "",
     phone: "",
-    address: "",
-    categories: [],
+    role: "Store Owner",
+    storeName: "",
+    storeAddress: "",
     profilePhoto: "",
     createdAt: "",
   });
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [editFieldErrors, setEditFieldErrors] = useState({});
-
-  // Password Change State
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+  const [editFieldErrors, setEditFieldErrors] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
   });
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState("");
-  const [passwordFieldErrors, setPasswordFieldErrors] = useState({});
+
+  // Image Upload State
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageSuccess, setImageSuccess] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Fetch profile on mount
   useEffect(() => {
     if (!storeId) {
-      setProfileError("Missing storeId. Please login again.");
+      setEditFieldErrors((prev) => ({ ...prev, fullName: "Missing storeId. Please login again." }));
       setProfileLoading(false);
       return;
     }
 
     const fetchProfile = async () => {
       setProfileLoading(true);
-      setProfileError("");
 
       try {
-        const res = await api.get(`/stores/${storeId}`);
+        const res = await getStoreProfile(storeId);
         const store = res?.data?.data || res?.data?.store || {};
 
         setProfileData({
-          name: store.name || storeName,
+          fullName: store.fullName || store.name || storeName || "",
+          username: store.username || store.email?.split("@")[0] || "",
           email: store.email || "",
           phone: store.phone || "",
-          address: store.address || "",
-          categories: Array.isArray(store.categories) ? store.categories : [],
+          role: store.role || "Store Owner",
+          storeName: store.name || storeName || "",
+          storeAddress: store.address || "",
           profilePhoto: store.profilePhoto || "",
           createdAt: store.createdAt || "",
         });
@@ -67,7 +70,7 @@ function ProfilePage() {
           err?.response?.data?.error ||
           err?.message ||
           "Failed to load profile";
-        setProfileError(msg);
+        setEditFieldErrors((prev) => ({ ...prev, fullName: msg }));
       } finally {
         setProfileLoading(false);
       }
@@ -76,15 +79,15 @@ function ProfilePage() {
     fetchProfile();
   }, [storeId, storeName]);
 
-  // Get store initials for avatar
-  const storeInitials = profileData.name
+  // Get user initials for avatar
+  const userInitials = profileData.fullName
     .trim()
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((word) => word.charAt(0))
-    .toUpperCase()
-    .join("");
+    .join("")
+    .toUpperCase();
 
   // Format date
   const formatDate = (dateString) => {
@@ -100,6 +103,118 @@ function ProfilePage() {
     }
   };
 
+  // Handle image file selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const error = validateImageFile(file);
+    if (error) {
+      setImageError(error);
+      setImagePreview("");
+      setSelectedFile(null);
+      return;
+    }
+
+    setImageError("");
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImagePreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Upload profile image
+  const handleUploadImage = async () => {
+    if (!selectedFile) {
+      setImageError("Please select an image first.");
+      return;
+    }
+
+    setImageLoading(true);
+    setImageError("");
+    setImageSuccess("");
+
+    try {
+      const formData = new FormData();
+      formData.append("profilePhoto", selectedFile);
+
+      await uploadProfileImage(storeId, formData);
+
+      setProfileData((prev) => ({
+        ...prev,
+        profilePhoto: imagePreview,
+      }));
+
+      localStorage.setItem("storePhoto", imagePreview);
+
+      setImageSuccess("Profile picture uploaded successfully!");
+      setSelectedFile(null);
+      setImagePreview("");
+
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (changePhotoInputRef.current) changePhotoInputRef.current.value = "";
+
+      setTimeout(() => setImageSuccess(""), 3000);
+    } catch (err) {
+      const apiErrors = parseApiErrors(err);
+      if (Object.keys(apiErrors).length > 0) {
+        setImageError(apiErrors.image || apiErrors.profilePhoto || Object.values(apiErrors)[0]);
+      } else {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to upload image";
+        setImageError(msg);
+      }
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Remove profile image
+  const handleRemoveImage = async () => {
+    setImageLoading(true);
+    setImageError("");
+    setImageSuccess("");
+
+    try {
+      await deleteProfileImage(storeId);
+
+      setProfileData((prev) => ({
+        ...prev,
+        profilePhoto: "",
+      }));
+
+      localStorage.removeItem("storePhoto");
+
+      setImageSuccess("Profile picture removed successfully!");
+
+      setTimeout(() => setImageSuccess(""), 3000);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to remove image";
+      setImageError(msg);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Clear image preview
+  const handleCancelImageUpload = () => {
+    setSelectedFile(null);
+    setImagePreview("");
+    setImageError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (changePhotoInputRef.current) changePhotoInputRef.current.value = "";
+  };
+
   // Handle profile edit changes
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -107,9 +222,7 @@ function ProfilePage() {
       ...prev,
       [name]: value,
     }));
-    setProfileError("");
-    setProfileSuccess("");
-    // Clear field error
+
     if (editFieldErrors[name]) {
       setEditFieldErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -119,7 +232,7 @@ function ProfilePage() {
   const validateProfileForm = () => {
     const errors = {};
 
-    errors.name = validateRequired(profileData.name, "Store name");
+    errors.fullName = validateRequired(profileData.fullName, "Full Name");
     errors.email = validateEmail(profileData.email);
     errors.phone = validatePhoneNumber(profileData.phone);
 
@@ -137,19 +250,17 @@ function ProfilePage() {
     }
 
     setProfileLoading(true);
-    setProfileError("");
     setProfileSuccess("");
 
     try {
-      await updateStoreSettings(storeId, {
-        name: profileData.name,
+      await updateStoreProfile(storeId, {
+        name: profileData.fullName,
         email: profileData.email,
         phone: profileData.phone,
-        address: profileData.address,
-        categories: profileData.categories,
+        address: profileData.storeAddress,
       });
 
-      localStorage.setItem("storeName", profileData.name);
+      localStorage.setItem("storeName", profileData.fullName);
       setProfileSuccess("Profile updated successfully!");
       setIsEditing(false);
 
@@ -158,105 +269,20 @@ function ProfilePage() {
       const apiErrors = parseApiErrors(err);
       if (Object.keys(apiErrors).length > 0) {
         setEditFieldErrors(apiErrors);
-        setProfileError("Please fix the errors below");
       } else {
         const msg =
           err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message ||
           "Failed to update profile";
-        setProfileError(msg);
+        setEditFieldErrors((prev) => ({ ...prev, fullName: msg }));
       }
     } finally {
       setProfileLoading(false);
     }
   };
 
-  // Handle password field changes
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    setPasswordError("");
-    setPasswordSuccess("");
-    // Clear field error
-    if (passwordFieldErrors[name]) {
-      setPasswordFieldErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  // Validate password form
-  const validatePasswordForm = () => {
-    const errors = {};
-
-    errors.currentPassword = validateRequired(passwordData.currentPassword, "Current password");
-    errors.newPassword = validatePassword(passwordData.newPassword, 6);
-    
-    if (!errors.newPassword && passwordData.newPassword === passwordData.currentPassword) {
-      errors.newPassword = "New password must be different from current password";
-    }
-
-    if (!errors.newPassword && passwordData.newPassword) {
-      errors.confirmPassword = validatePasswordMatch(
-        passwordData.newPassword,
-        passwordData.confirmPassword
-      );
-    }
-
-    return errors;
-  };
-
-  // Change password
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-
-    const errors = validatePasswordForm();
-    if (Object.values(errors).some((err) => err)) {
-      setPasswordFieldErrors(errors);
-      return;
-    }
-
-    setPasswordLoading(true);
-    setPasswordError("");
-    setPasswordSuccess("");
-
-    try {
-      await updateStorePassword(storeId, {
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-        confirmPassword: passwordData.confirmPassword,
-      });
-
-      setPasswordSuccess("Password changed successfully!");
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      setPasswordFieldErrors({});
-
-      setTimeout(() => setPasswordSuccess(""), 3000);
-    } catch (err) {
-      const apiErrors = parseApiErrors(err);
-      if (Object.keys(apiErrors).length > 0) {
-        setPasswordFieldErrors(apiErrors);
-        setPasswordError("Please fix the errors below");
-      } else {
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message ||
-          "Failed to change password";
-        setPasswordError(msg);
-      }
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  if (profileLoading) {
+  if (profileLoading && !isEditing) {
     return (
       <div className="profile-page">
         <div className="profile-header">
@@ -271,39 +297,38 @@ function ProfilePage() {
     <div className="profile-page">
       <div className="profile-header">
         <h1>Profile</h1>
-        <p>Manage your store profile and account settings</p>
+        <p>Manage your personal account information and profile</p>
       </div>
 
       <div className="profile-container">
-        {/* Profile Picture Section */}
-        <div className="profile-picture-section">
-          <div className="avatar-container">
-            {profileData.profilePhoto ? (
-              <img
-                src={profileData.profilePhoto}
-                alt={profileData.name}
-                className="profile-avatar-img"
-              />
-            ) : (
-              <div className="profile-avatar">{storeInitials}</div>
-            )}
-          </div>
-          <div className="avatar-info">
-            <h3>{profileData.name}</h3>
-            <p className="role-badge">Store Owner</p>
-            <p className="joined-date">
-              Joined {formatDate(profileData.createdAt)}
-            </p>
+        {/* Profile Header Section */}
+        <div className="profile-card">
+          <div className="profile-avatar-section">
+            <div className="avatar-wrapper">
+              {profileData.profilePhoto ? (
+                <img
+                  src={profileData.profilePhoto}
+                  alt={profileData.fullName}
+                  className="profile-avatar-img"
+                />
+              ) : (
+                <div className="profile-avatar">{userInitials}</div>
+              )}
+            </div>
+            <div className="profile-basic-info">
+              <h2 className="profile-name">{profileData.fullName || "User"}</h2>
+              <p className="profile-role">{profileData.role}</p>
+            </div>
           </div>
         </div>
 
-        {/* Basic Information Section */}
-        <div className="profile-section">
+        {/* Personal Information Section */}
+        <div className="profile-card">
           <div className="section-header">
             <div>
-              <h2>Basic Information</h2>
+              <h2>Personal Information</h2>
               <p className="section-subtitle">
-                {isEditing ? "Edit your store details" : "Your store profile details"}
+                {isEditing ? "Edit your personal details" : "Your account information"}
               </p>
             </div>
             {!isEditing && (
@@ -317,12 +342,6 @@ function ProfilePage() {
             )}
           </div>
 
-          {profileError && (
-            <div className="alert alert-error">
-              <span>⚠️</span> {profileError}
-            </div>
-          )}
-
           {profileSuccess && (
             <div className="alert alert-success">
               <span>✓</span> {profileSuccess}
@@ -331,18 +350,23 @@ function ProfilePage() {
 
           {isEditing ? (
             <form onSubmit={handleSaveProfile} className="profile-form">
-              <div className={`form-group ${editFieldErrors.name ? "has-error" : ""}`}>
-                <label>Store Name</label>
+              <div className={`form-group ${editFieldErrors.fullName ? "has-error" : ""}`}>
+                <label>Full Name</label>
                 <input
                   type="text"
-                  name="name"
-                  value={profileData.name}
+                  name="fullName"
+                  value={profileData.fullName}
                   onChange={handleProfileChange}
-                  className={editFieldErrors.name ? "input-error" : ""}
+                  onBlur={(e) => {
+                    const error = validateRequired(e.target.value, "Full Name");
+                    if (error) setEditFieldErrors(prev => ({ ...prev, fullName: error }));
+                  }}
+                  className={editFieldErrors.fullName ? "input-error" : ""}
+                  placeholder="Enter your full name"
                   required
                 />
-                {editFieldErrors.name && (
-                  <FormFieldError error={editFieldErrors.name} />
+                {editFieldErrors.fullName && (
+                  <FormFieldError error={editFieldErrors.fullName} />
                 )}
               </div>
 
@@ -353,7 +377,12 @@ function ProfilePage() {
                   name="email"
                   value={profileData.email}
                   onChange={handleProfileChange}
+                  onBlur={(e) => {
+                    const error = validateEmail(e.target.value);
+                    if (error) setEditFieldErrors(prev => ({ ...prev, email: error }));
+                  }}
                   className={editFieldErrors.email ? "input-error" : ""}
+                  placeholder="Enter your email"
                   required
                 />
                 {editFieldErrors.email && (
@@ -368,40 +397,17 @@ function ProfilePage() {
                   name="phone"
                   value={profileData.phone}
                   onChange={handleProfileChange}
+                  onBlur={(e) => {
+                    const error = validatePhoneNumber(e.target.value);
+                    if (error) setEditFieldErrors(prev => ({ ...prev, phone: error }));
+                  }}
                   className={editFieldErrors.phone ? "input-error" : ""}
+                  placeholder="Enter your phone number"
                   required
                 />
                 {editFieldErrors.phone && (
                   <FormFieldError error={editFieldErrors.phone} />
                 )}
-              </div>
-
-              <div className="form-group">
-                <label>Store Address</label>
-                <textarea
-                  name="address"
-                  value={profileData.address}
-                  onChange={handleProfileChange}
-                  placeholder="Enter store address"
-                  rows={3}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Categories</label>
-                <div className="categories-display">
-                  {profileData.categories.length > 0 ? (
-                    <div className="categories-list">
-                      {profileData.categories.map((category, idx) => (
-                        <span key={idx} className="category-badge">
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted">No categories selected</p>
-                  )}
-                </div>
               </div>
 
               <div className="form-actions">
@@ -417,7 +423,7 @@ function ProfilePage() {
                   className="btn-cancel"
                   onClick={() => {
                     setIsEditing(false);
-                    setEditFieldErrors({});
+                    setEditFieldErrors({ fullName: "", email: "", phone: "" });
                   }}
                   disabled={profileLoading}
                 >
@@ -428,113 +434,160 @@ function ProfilePage() {
           ) : (
             <div className="profile-info-display">
               <div className="info-row">
-                <span className="info-label">Store Name</span>
-                <span className="info-value">{profileData.name}</span>
+                <span className="info-label">Full Name</span>
+                <span className="info-value">{profileData.fullName || "Not set"}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Username</span>
+                <span className="info-value">{profileData.username || "Not set"}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">Email</span>
-                <span className="info-value">{profileData.email}</span>
+                <span className="info-value">{profileData.email || "Not set"}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">Phone</span>
-                <span className="info-value">{profileData.phone}</span>
+                <span className="info-value">{profileData.phone || "Not set"}</span>
               </div>
               <div className="info-row">
-                <span className="info-label">Address</span>
-                <span className="info-value">
-                  {profileData.address || "Not set"}
-                </span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Categories</span>
-                <span className="info-value">
-                  {profileData.categories.length > 0
-                    ? profileData.categories.join(", ")
-                    : "None"}
-                </span>
+                <span className="info-label">Role</span>
+                <span className="info-value">{profileData.role || "Not set"}</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Security Section */}
-        <div className="profile-section">
+        {/* Store Information Section */}
+        <div className="profile-card">
           <div className="section-header">
             <div>
-              <h2>Security</h2>
-              <p className="section-subtitle">Change your password</p>
+              <h2>Store Information</h2>
+              <p className="section-subtitle">Your store details</p>
             </div>
           </div>
 
-          {passwordError && (
-            <div className="alert alert-error">
-              <span>⚠️</span> {passwordError}
+          <div className="profile-info-display">
+            <div className="info-row">
+              <span className="info-label">Store Name</span>
+              <span className="info-value">{profileData.storeName || "Not set"}</span>
             </div>
-          )}
+            <div className="info-row">
+              <span className="info-label">Store Address</span>
+              <span className="info-value">{profileData.storeAddress || "Not set"}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Member Since</span>
+              <span className="info-value">{formatDate(profileData.createdAt)}</span>
+            </div>
+          </div>
+        </div>
 
-          {passwordSuccess && (
+        {/* Profile Image Management Section */}
+        <div className="profile-card">
+          <div className="section-header">
+            <div>
+              <h2>Profile Image</h2>
+              <p className="section-subtitle">Upload, change, or remove your profile picture</p>
+            </div>
+          </div>
+
+          {imageSuccess && (
             <div className="alert alert-success">
-              <span>✓</span> {passwordSuccess}
+              <span>✓</span> {imageSuccess}
             </div>
           )}
 
-          <form onSubmit={handleChangePassword} className="password-form">
-            <div className={`form-group ${passwordFieldErrors.currentPassword ? "has-error" : ""}`}>
-              <label>Current Password</label>
-              <input
-                type="password"
-                name="currentPassword"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordChange}
-                className={passwordFieldErrors.currentPassword ? "input-error" : ""}
-                placeholder="Enter current password"
-                required
-              />
-              {passwordFieldErrors.currentPassword && (
-                <FormFieldError error={passwordFieldErrors.currentPassword} />
+          {imagePreview ? (
+            <div className="image-upload-preview">
+              <div className="preview-container">
+                <img src={imagePreview} alt="Preview" className="preview-image" />
+                <p className="preview-label">Preview</p>
+              </div>
+
+              <div className="preview-actions">
+                <button
+                  type="button"
+                  className="btn-upload-preview"
+                  onClick={handleUploadImage}
+                  disabled={imageLoading}
+                >
+                  {imageLoading ? "Uploading..." : "Upload"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancel-preview"
+                  onClick={handleCancelImageUpload}
+                  disabled={imageLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {imageError && (
+                <FormFieldError error={imageError} />
               )}
             </div>
-
-            <div className={`form-group ${passwordFieldErrors.newPassword ? "has-error" : ""}`}>
-              <label>New Password</label>
+          ) : (
+            <div className="image-upload-section">
               <input
-                type="password"
-                name="newPassword"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-                className={passwordFieldErrors.newPassword ? "input-error" : ""}
-                placeholder="Enter new password"
-                required
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageSelect}
+                style={{ display: "none" }}
               />
-              {passwordFieldErrors.newPassword && (
-                <FormFieldError error={passwordFieldErrors.newPassword} />
-              )}
-            </div>
-
-            <div className={`form-group ${passwordFieldErrors.confirmPassword ? "has-error" : ""}`}>
-              <label>Confirm New Password</label>
               <input
-                type="password"
-                name="confirmPassword"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordChange}
-                className={passwordFieldErrors.confirmPassword ? "input-error" : ""}
-                placeholder="Confirm new password"
-                required
+                ref={changePhotoInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageSelect}
+                style={{ display: "none" }}
               />
-              {passwordFieldErrors.confirmPassword && (
-                <FormFieldError error={passwordFieldErrors.confirmPassword} />
-              )}
-            </div>
 
-            <button
-              type="submit"
-              className="btn-change-password"
-              disabled={passwordLoading}
-            >
-              {passwordLoading ? "Updating..." : "Change Password"}
-            </button>
-          </form>
+              <div className="image-action-buttons">
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {!profileData.profilePhoto ? (
+                    <button
+                      type="button"
+                      className="btn-upload-new"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={imageLoading}
+                    >
+                      Upload New Photo
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-change-photo"
+                        onClick={() => changePhotoInputRef.current?.click()}
+                        disabled={imageLoading}
+                      >
+                        Change Photo
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-remove-photo"
+                        onClick={handleRemoveImage}
+                        disabled={imageLoading}
+                      >
+                        Remove Photo
+                      </button>
+                    </>
+                  )}
+                  {imageError && (
+                    <FormFieldError error={imageError} />
+                  )}
+                </div>
+              </div>
+
+              <div className="image-format-info">
+                <p className="format-title">Supported Formats</p>
+                <p className="format-list">JPG, JPEG, PNG, WEBP</p>
+                <p className="format-size">Maximum file size: 5MB</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

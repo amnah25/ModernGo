@@ -1,8 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import { storeRegister } from "../../../../services/storeAuthApi";
+import { storeRegister } from "../../../../services/store";
+import { validateEmail, validateRequired, validatePassword, validatePasswordMatch, validatePhoneNumber, parseApiErrors } from "../../../../services/validationUtils";
 import LocationPicker from "./LocationPicker";
+import FormFieldError from "./FormFieldError";
 
 function StoreForm() {
   const navigate = useNavigate();
@@ -19,13 +21,23 @@ function StoreForm() {
   const [categoryInput, setCategoryInput] = useState("");
 
   const [location, setLocation] = useState(null);
+  const [locationError, setLocationError] = useState("");
   const [showMap, setShowMap] = useState(true);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  const [fieldErrors, setFieldErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    categories: "",
+    general: "",
+  });
 
   useEffect(() => {
     if (!showMap) {
@@ -39,7 +51,31 @@ function StoreForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
-    setError("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "", general: "" }));
+    if (name === "confirmPassword" || name === "password") {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    let error = "";
+
+    if (name === "name") {
+      error = validateRequired(form.name, "Store Name");
+    } else if (name === "email") {
+      error = validateEmail(form.email);
+    } else if (name === "password") {
+      error = validatePassword(form.password, 6);
+    } else if (name === "confirmPassword") {
+      error = validatePasswordMatch(form.password, form.confirmPassword) || validateRequired(form.confirmPassword, "Confirm Password");
+    } else if (name === "phone") {
+      error = validatePhoneNumber(form.phone);
+    }
+
+    if (error) {
+      setFieldErrors((prev) => ({ ...prev, [name]: error }));
+    }
   };
 
   const handleAddCategory = () => {
@@ -49,6 +85,7 @@ function StoreForm() {
         categories: [...form.categories, categoryInput.trim()],
       });
       setCategoryInput("");
+      setFieldErrors((prev) => ({ ...prev, categories: "" }));
     }
   };
 
@@ -62,33 +99,53 @@ function StoreForm() {
   const handleLocationSelect = (selectedLocation) => {
     setLocation(selectedLocation);
     setShowMap(false);
-    setError("");
+    setLocationError("");
+    setFieldErrors((prev) => ({ ...prev, general: "" }));
   };
 
   const handleEditLocation = () => {
     setShowMap(true);
   };
 
+  const validateForm = () => {
+    const errors = {};
+
+    errors.name = validateRequired(form.name, "Store Name");
+    errors.email = validateEmail(form.email);
+    errors.password = validatePassword(form.password, 6);
+    errors.confirmPassword = validateRequired(form.confirmPassword, "Confirm Password") || validatePasswordMatch(form.password, form.confirmPassword);
+    errors.phone = validatePhoneNumber(form.phone);
+
+    if (form.categories.length === 0) {
+      errors.categories = "Please add at least one category";
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match!");
+    // Validate form
+    const errors = validateForm();
+    if (Object.values(errors).some((err) => err)) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
       return;
     }
 
     if (!location) {
-      setError("Please select store location from the map.");
+      setLocationError("Please select store location from the map.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setFieldErrors({ name: "", email: "", password: "", confirmPassword: "", phone: "", categories: "", general: "" });
+    setLocationError("");
 
     try {
       const payload = {
         name: form.name.trim(),
-        email: form.email.trim(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
         confirmPassword: form.confirmPassword,
         address:
@@ -126,12 +183,10 @@ function StoreForm() {
 
       navigate("/store/dashboard/products");
     } catch (err) {
-      const issues =
-        err?.response?.data?.cause?.validationErrors?.[0]?.issues || [];
+      const apiErrors = parseApiErrors(err);
 
-      if (issues.length > 0) {
-        const messages = issues.map((issue) => issue.message).join(" | ");
-        setError(messages);
+      if (Object.keys(apiErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...apiErrors }));
       } else {
         const msg =
           err?.response?.data?.message ||
@@ -141,8 +196,8 @@ function StoreForm() {
             : err?.message ||
           "Registration failed";
 
-        console.error("Registration Error:", err.response?.data); // Debug log
-        setError(msg);
+        console.error("Registration Error:", err.response?.data);
+        setFieldErrors((prev) => ({ ...prev, general: msg }));
       }
     } finally {
       setLoading(false);
@@ -151,61 +206,81 @@ function StoreForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="form-group">
+      <div className={`form-group ${fieldErrors.name ? "has-error" : ""}`}>
         <input
           type="text"
           name="name"
           placeholder="Store Name"
           value={form.name}
           onChange={handleChange}
+          onBlur={handleBlur}
+          className={fieldErrors.name ? "input-error" : ""}
           required
         />
+        {fieldErrors.name && <FormFieldError error={fieldErrors.name} />}
       </div>
 
-      <div className="form-group">
+      <div className={`form-group ${fieldErrors.email ? "has-error" : ""}`}>
         <input
           type="email"
           name="email"
           placeholder="Email Address"
           value={form.email}
           onChange={handleChange}
+          onBlur={handleBlur}
+          className={fieldErrors.email ? "input-error" : ""}
           required
         />
+        {fieldErrors.email && <FormFieldError error={fieldErrors.email} />}
       </div>
 
       <div className="row">
-        <div className="password-field">
-          <input
-            type={showPassword ? "text" : "password"}
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
-          <span
-            className="toggle-password"
-            onClick={() => setShowPassword((prev) => !prev)}
-          >
-            {showPassword ? <FiEyeOff /> : <FiEye />}
-          </span>
+        <div className={`form-field ${fieldErrors.password ? "has-error" : ""}`}>
+          <div className="password-field">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={fieldErrors.password ? "input-error" : ""}
+              required
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <FiEyeOff /> : <FiEye />}
+            </button>
+          </div>
+          {fieldErrors.password && <FormFieldError error={fieldErrors.password} />}
         </div>
 
-        <div className="password-field">
-          <input
-            type={showConfirm ? "text" : "password"}
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            required
-          />
-          <span
-            className="toggle-password"
-            onClick={() => setShowConfirm((prev) => !prev)}
-          >
-            {showConfirm ? <FiEyeOff /> : <FiEye />}
-          </span>
+        <div className={`form-field ${fieldErrors.confirmPassword ? "has-error" : ""}`}>
+          <div className="password-field">
+            <input
+              type={showConfirm ? "text" : "password"}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={fieldErrors.confirmPassword ? "input-error" : ""}
+              required
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowConfirm((prev) => !prev)}
+              aria-label={showConfirm ? "Hide password" : "Show password"}
+            >
+              {showConfirm ? <FiEyeOff /> : <FiEye />}
+            </button>
+          </div>
+          {fieldErrors.confirmPassword && <FormFieldError error={fieldErrors.confirmPassword} />}
         </div>
       </div>
 
@@ -230,75 +305,81 @@ function StoreForm() {
             </button>
           </div>
         )}
+        {locationError && <FormFieldError error={locationError} />}
       </div>
 
-      <div className="form-group">
+      <div className={`form-group ${fieldErrors.phone ? "has-error" : ""}`}>
         <input
-          type="text"
+          type="tel"
           name="phone"
           placeholder="Phone Number"
           value={form.phone}
           onChange={handleChange}
+          onBlur={handleBlur}
+          className={fieldErrors.phone ? "input-error" : ""}
           required
         />
+        {fieldErrors.phone && <FormFieldError error={fieldErrors.phone} />}
       </div>
 
-      <div className="form-group">
-        <label>Categories</label>
-        <div className="categories-container">
-          <div className="categories-list">
-            {form.categories.map((category, index) => (
-              <div key={index} className="category-tag">
-                <span>{category}</span>
+      <div className="form-footer">
+        <div className="form-group">
+          <label>Categories</label>
+          <div className="categories-container">
+            <div className="categories-list">
+              {form.categories.map((category, index) => (
+                <div key={index} className="category-tag">
+                  <span>{category}</span>
+                  <button
+                    type="button"
+                    className="remove-category-btn"
+                    onClick={() => handleRemoveCategory(index)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="category-input-wrapper">
+              <input
+                type="text"
+                placeholder="Add category..."
+                value={categoryInput}
+                onChange={(e) => setCategoryInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCategory();
+                  }
+                }}
+              />
+              {categoryInput.trim() && (
                 <button
                   type="button"
-                  className="remove-category-btn"
-                  onClick={() => handleRemoveCategory(index)}
+                  className="add-category-btn"
+                  onClick={handleAddCategory}
                 >
-                  ×
+                  +
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-
-          <div className="category-input-wrapper">
-            <input
-              type="text"
-              placeholder="Add category..."
-              value={categoryInput}
-              onChange={(e) => setCategoryInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddCategory();
-                }
-              }}
-            />
-            {categoryInput.trim() && (
-              <button
-                type="button"
-                className="add-category-btn"
-                onClick={handleAddCategory}
-              >
-                +
-              </button>
-            )}
-          </div>
+          {fieldErrors.categories && <FormFieldError error={fieldErrors.categories} />}
         </div>
-        {form.categories.length === 0 && (
-          <p className="hint-text">Add at least one category</p>
+
+        {fieldErrors.general && (
+          <p className="error-text">{fieldErrors.general}</p>
         )}
+
+        <button type="submit" className="signup-btn" disabled={loading}>
+          {loading ? "Signing Up..." : "Sign Up"}
+        </button>
+
+        <p className="login-link">
+          Already have an account? <Link to="/login">Log In</Link>
+        </p>
       </div>
-
-      {error && <p className="error-text">{error}</p>}
-
-      <button type="submit" className="signup-btn" disabled={loading}>
-        {loading ? "Signing Up..." : "Sign Up"}
-      </button>
-
-      <p className="login-link">
-        Already have an account? <Link to="/login">Log In</Link>
-      </p>
     </form>
   );
 }

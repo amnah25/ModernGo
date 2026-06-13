@@ -9,6 +9,7 @@ import StoreDashboardLayout from "./features/store/dashboard/layout/StoreDashboa
 import ProductsPage from "./features/store/dashboard/pages/ProductsPage";
 import OrdersPage from "./features/store/dashboard/pages/OrdersPage";
 import AnalyticsPage from "./features/store/dashboard/pages/AnalyticsPage";
+import ProfilePage from "./features/store/dashboard/pages/ProfilePage";
 import SettingsPage from "./features/store/dashboard/pages/SettingsPage";
 
 import "leaflet/dist/leaflet.css";
@@ -27,6 +28,7 @@ function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

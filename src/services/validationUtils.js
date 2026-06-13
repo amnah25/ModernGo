@@ -2,6 +2,23 @@
  * Validation utility functions
  */
 
+export const validateImageFile = (file) => {
+  if (!file) return "Please select a file";
+
+  const allowedFormats = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+
+  if (!allowedFormats.includes(file.type)) {
+    return "File format not supported. Please use JPG, JPEG, PNG, or WEBP.";
+  }
+
+  if (file.size > maxSize) {
+    return "File size must be less than 5MB.";
+  }
+
+  return "";
+};
+
 export const validateEmail = (email) => {
   if (!email || !email.trim()) {
     return "Email is required";
@@ -34,7 +51,7 @@ export const validatePhoneNumber = (phone) => {
   if (!phone || !phone.trim()) {
     return "Phone number is required";
   }
-  const phoneRegex = /^[0-9\s\-\+\(\)]{7,}$/;
+  const phoneRegex = /^[0-9\s+\-()]{7,}$/;
   if (!phoneRegex.test(phone)) {
     return "Invalid phone number format";
   }

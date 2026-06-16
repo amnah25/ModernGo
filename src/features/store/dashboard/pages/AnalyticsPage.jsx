@@ -25,7 +25,7 @@ const COLORS = ["#00C49F", "#FFBB28", "#FF8042", "#0088FE", "#ff5c8d"];
 function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [timeRange, setTimeRange] = useState("7d");
+  const [timeRange, setTimeRange] = useState("30d");
   const [sortBy, setSortBy] = useState("quantity"); // 'quantity' or 'revenue'
   
   const [summary, setSummary] = useState(null);

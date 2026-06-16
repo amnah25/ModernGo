@@ -1,31 +1,38 @@
 import { useEffect, useState } from "react";
+import api from "../../../../services/api";
 import "../styles/orders.css";
 
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Simulated API call for orders since backend endpoint is missing
+    const storeId = localStorage.getItem("storeId");
+    if (!storeId) {
+      setError("Missing store ID. Please login again.");
+      setLoading(false);
+      return;
+    }
+
     const fetchOrders = async () => {
       setLoading(true);
+      setError("");
       try {
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        // Mock data
-        const mockOrders = [
-          { id: "1", orderId: "ORD-9381-A", customerName: "Alice Johnson", total: 145.20, status: "completed", date: "2026-06-15" },
-          { id: "2", orderId: "ORD-1029-B", customerName: "Michael Smith", total: 89.50, status: "completed", date: "2026-06-15" },
-          { id: "3", orderId: "ORD-4492-C", customerName: "Sarah Connor", total: 210.00, status: "pending", date: "2026-06-14" },
-          { id: "4", orderId: "ORD-8812-D", customerName: "David Bruce", total: 45.00, status: "cancelled", date: "2026-06-14" },
-          { id: "5", orderId: "ORD-5561-E", customerName: "Emma Watson", total: 320.75, status: "completed", date: "2026-06-13" },
-          { id: "6", orderId: "ORD-9921-F", customerName: "John Doe", total: 65.90, status: "pending", date: "2026-06-13" },
-        ];
-
-        setOrders(mockOrders);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
+        const res = await api.get(`/orders/store/${storeId}`);
+        const rawOrders = res.data?.data?.orders || [];
+        const normalized = rawOrders.map((o) => ({
+          id: o._id,
+          orderId: o._id ? o._id.substring(o._id.length - 8).toUpperCase() : "UNKNOWN",
+          customerName: o.customerId ? `${o.customerId.firstName} ${o.customerId.lastName}` : "Guest Customer",
+          total: o.totalAmount,
+          status: o.status,
+          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "N/A",
+        }));
+        setOrders(normalized);
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+        setError("Failed to load orders. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -72,7 +79,11 @@ function OrdersPage() {
       <div className="orders-table-section">
         <h2 className="orders-section-title">Order History</h2>
 
-        {loading ? (
+        {error ? (
+          <div className="orders-empty" style={{ color: "#ef4444" }}>
+            <p>{error}</p>
+          </div>
+        ) : loading ? (
           <div className="orders-loading">
             <div className="spinner"></div>
             <p>Loading orders...</p>

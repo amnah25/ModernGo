@@ -63,7 +63,7 @@ function SettingsPage() {
 
       try {
         const res = await api.get(`/stores/${storeId}`);
-        const store = res?.data?.data || res?.data?.store || {};
+        const store = res?.data?.data?.store || res?.data?.data || res?.data?.store || {};
 
         setStoreInfo({
           name: store.name || storeName,

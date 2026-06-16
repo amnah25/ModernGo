@@ -51,7 +51,7 @@ function ProfilePage() {
 
       try {
         const res = await getStoreProfile(storeId);
-        const store = res?.data?.data || res?.data?.store || {};
+        const store = res?.data?.data?.store || res?.data?.data || res?.data?.store || {};
 
         setProfileData({
           fullName: store.fullName || store.name || storeName || "",

@@ -1,32 +1,98 @@
 import { useEffect, useState } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts";
+import {
+  getStoreSummary,
+  getSalesChart,
+  getTopProducts,
+  getOrderStatus
+} from "../../../../services/analyticsApi";
 import "../styles/analytics.css";
 
+const COLORS = ["#00C49F", "#FFBB28", "#FF8042", "#0088FE", "#ff5c8d"];
+
 function AnalyticsPage() {
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [timeRange, setTimeRange] = useState("7d");
+  const [sortBy, setSortBy] = useState("quantity"); // 'quantity' or 'revenue'
+  
+  const [summary, setSummary] = useState(null);
+  const [salesChart, setSalesChart] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [orderStatus, setOrderStatus] = useState([]);
 
   useEffect(() => {
-    // TODO: Connect to backend analytics API when available
-    // Expected endpoint: GET /api/stores/{storeId}/analytics?range=7d|30d|90d
-    // For now, showing placeholder state
-    setLoading(false);
-    setError("Analytics API endpoints are not yet available on the backend.");
-  }, [timeRange]);
+    const fetchAnalytics = async () => {
+      const storeId = localStorage.getItem("storeId");
+      if (!storeId) {
+        setError("Store ID not found. Please log in.");
+        setLoading(false);
+        return;
+      }
 
-  // Sample data structure for when API is ready
-  const sampleAnalytics = {
-    revenue: 15420.50,
-    revenueChange: 12.5,
-    orders: 284,
-    ordersChange: 8.3,
-    customers: 156,
-    customersChange: 5.2,
-    avgOrderValue: 54.30,
-    avgOrderValueChange: 3.8,
-    chartData: [],
-    topProducts: [],
+      setLoading(true);
+      setError("");
+      
+      const periodDays = parseInt(timeRange.replace('d', ''));
+
+      try {
+        const [summaryRes, salesRes, productsRes, statusRes] = await Promise.all([
+          getStoreSummary(storeId, periodDays),
+          getSalesChart(storeId, periodDays),
+          getTopProducts(storeId, periodDays, 5, sortBy),
+          getOrderStatus(storeId, periodDays)
+        ]);
+
+        setSummary(summaryRes.data?.data || null);
+        setSalesChart(salesRes.data?.data || []);
+        setTopProducts(productsRes.data?.data || []);
+        
+        // Format order status data to map status -> name
+        const rawStatus = statusRes.data?.data || [];
+        const formattedStatus = rawStatus.map(item => ({
+          ...item,
+          status: item.status.charAt(0).toUpperCase() + item.status.slice(1)
+        }));
+        setOrderStatus(formattedStatus);
+
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err);
+        setError("Failed to load analytics data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [timeRange, sortBy]);
+
+  const renderKpiValue = (kpi) => {
+    if (!kpi) return 0;
+    return kpi.value;
+  };
+  
+  const renderKpiChange = (kpi) => {
+    if (!kpi) return null;
+    return (
+      <p className={`kpi-change ${kpi.isPositive ? "positive" : "negative"}`}>
+        <span className="change-icon">
+          {kpi.isPositive ? "↑" : "↓"}
+        </span>
+        {Math.abs(kpi.trend).toFixed(1)}%
+      </p>
+    );
   };
 
   return (
@@ -62,118 +128,6 @@ function AnalyticsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="analytics-kpis">
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <h3>Total Revenue</h3>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="kpi-icon"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <p className="kpi-value">${sampleAnalytics.revenue.toFixed(2)}</p>
-          <p className={`kpi-change ${sampleAnalytics.revenueChange >= 0 ? "positive" : "negative"}`}>
-            <span className="change-icon">
-              {sampleAnalytics.revenueChange >= 0 ? "↑" : "↓"}
-            </span>
-            {Math.abs(sampleAnalytics.revenueChange).toFixed(1)}%
-          </p>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <h3>Total Orders</h3>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="kpi-icon"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.148.42-.24.63C9.149 5.409 9 5.193 9 5c0-1.105.895-2 2-2h3c1.105 0 2 .895 2 2 0 .193-.149.409-.368.643m-5.801 0A48.412 48.412 0 015.25 9a48.412 48.412 0 017.5-7.168M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </div>
-          <p className="kpi-value">{sampleAnalytics.orders}</p>
-          <p className={`kpi-change ${sampleAnalytics.ordersChange >= 0 ? "positive" : "negative"}`}>
-            <span className="change-icon">
-              {sampleAnalytics.ordersChange >= 0 ? "↑" : "↓"}
-            </span>
-            {Math.abs(sampleAnalytics.ordersChange).toFixed(1)}%
-          </p>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <h3>New Customers</h3>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="kpi-icon"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 001.591-.68m-15.6 0A9.37 9.37 0 0012 3c4.753 0 8.871 3.157 10.364 7.598M12 3c-4.753 0-8.871 3.157-10.364 7.598m15.6 0A9.37 9.37 0 0112 21m-8.371-7.598a9.38 9.38 0 002.625.372M12 21c4.753 0 8.871-3.157 10.364-7.598"
-              />
-            </svg>
-          </div>
-          <p className="kpi-value">{sampleAnalytics.customers}</p>
-          <p className={`kpi-change ${sampleAnalytics.customersChange >= 0 ? "positive" : "negative"}`}>
-            <span className="change-icon">
-              {sampleAnalytics.customersChange >= 0 ? "↑" : "↓"}
-            </span>
-            {Math.abs(sampleAnalytics.customersChange).toFixed(1)}%
-          </p>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <h3>Avg Order Value</h3>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="kpi-icon"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 12.75h.008v.008H9.75V12.75zm0 2.25h.008v.008H9.75v-.008zm0 2.25h.008v.008H9.75v-.008zm0 2.25h.008v.008H9.75v-.008zM12 12.75c-.621 0-1.125.504-1.125 1.125v6.75c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-6.75c0-.621-.504-1.125-1.125-1.125h-2.25zm6-2.25c-.621 0-1.125.504-1.125 1.125v8.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125V11.625c0-.621-.504-1.125-1.125-1.125h-2.25z"
-              />
-            </svg>
-          </div>
-          <p className="kpi-value">${sampleAnalytics.avgOrderValue.toFixed(2)}</p>
-          <p className={`kpi-change ${sampleAnalytics.avgOrderValueChange >= 0 ? "positive" : "negative"}`}>
-            <span className="change-icon">
-              {sampleAnalytics.avgOrderValueChange >= 0 ? "↑" : "↓"}
-            </span>
-            {Math.abs(sampleAnalytics.avgOrderValueChange).toFixed(1)}%
-          </p>
-        </div>
-      </div>
-
-      {/* Charts Section */}
       {loading ? (
         <div className="analytics-loading">
           <div className="spinner"></div>
@@ -181,114 +135,160 @@ function AnalyticsPage() {
         </div>
       ) : error ? (
         <div className="analytics-error">
-          <div className="error-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m-9.303 3.376c.866 1.5 2.926 2.871 5.303 2.871s4.437-1.372 5.303-2.87m0 0a24.848 24.848 0 015.404-3.7m-4.454-1.31c1.42-.923 2.944-1.426 4.454-1.426m0 0a23.94 23.94 0 015.422.756m-4.772 3.506a23.936 23.936 0 013.678-3.506m0 0A3 3 0 0027 10.464m-19.97.006a23.9 23.9 0 013.678 3.505m0 0a3 3 0 105.342 3.684"
-              />
-            </svg>
-          </div>
+          <div className="error-icon">⚠️</div>
           <h3>Analytics Not Available</h3>
           <p>{error}</p>
-          <p className="error-note">
-            This page is ready for integration. Backend endpoints will provide comprehensive business analytics.
-          </p>
         </div>
       ) : (
-        <div className="analytics-charts">
-          <div className="chart-card">
-            <h3>Revenue Trend</h3>
-            <div className="chart-placeholder">
-              <p>Revenue chart will appear here</p>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 12.75h.008v.008H9.75V12.75zm0 2.25h.008v.008H9.75v-.008zm0 2.25h.008v.008H9.75v-.008zm0 2.25h.008v.008H9.75v-.008zM12 12.75c-.621 0-1.125.504-1.125 1.125v6.75c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-6.75c0-.621-.504-1.125-1.125-1.125h-2.25zm6-2.25c-.621 0-1.125.504-1.125 1.125v8.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125V11.625c0-.621-.504-1.125-1.125-1.125h-2.25z"
-                />
-              </svg>
+        <>
+          {/* KPI Cards */}
+          <div className="analytics-kpis">
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <h3>Total Revenue</h3>
+              </div>
+              <p className="kpi-value">${renderKpiValue(summary?.totalRevenue)?.toFixed(2)}</p>
+              {renderKpiChange(summary?.totalRevenue)}
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <h3>Total Orders</h3>
+              </div>
+              <p className="kpi-value">{renderKpiValue(summary?.totalOrders)}</p>
+              {renderKpiChange(summary?.totalOrders)}
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <h3>New Customers</h3>
+              </div>
+              <p className="kpi-value">{renderKpiValue(summary?.newCustomers)}</p>
+              {renderKpiChange(summary?.newCustomers)}
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <h3>Avg Order Value</h3>
+              </div>
+              <p className="kpi-value">${renderKpiValue(summary?.avgOrderValue)?.toFixed(2)}</p>
+              {renderKpiChange(summary?.avgOrderValue)}
             </div>
           </div>
 
-          <div className="chart-card">
-            <h3>Top Products</h3>
-            <div className="top-products-placeholder">
-              <p>Top performing products will appear here</p>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-                />
-              </svg>
+          {/* Charts Section */}
+          <div className="analytics-charts">
+            <div className="chart-card chart-full-width" style={{ gridColumn: '1 / -1' }}>
+              <h3>Revenue Trend</h3>
+              <div className="chart-wrapper" style={{ height: 350, width: '100%', marginTop: '20px' }}>
+                {salesChart.length === 0 ? (
+                  <p>No revenue data for this period.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={salesChart}>
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} />
+                      <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
+                      <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
+                      <Area type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="chart-card">
-            <h3>Sales by Category</h3>
-            <div className="chart-placeholder">
-              <p>Sales breakdown by category will appear here</p>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5z"
-                />
-              </svg>
+            <div className="chart-card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3>Top Products</h3>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #e2e8f0',
+                    outline: 'none',
+                    background: '#f8fafc',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="quantity">By Quantity</option>
+                  <option value="revenue">By Revenue</option>
+                </select>
+              </div>
+              <div className="top-products-list" style={{ marginTop: '20px', flex: 1 }}>
+                {topProducts.length === 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#64748b' }}>
+                    <p>No product sales data</p>
+                  </div>
+                ) : (
+                  topProducts.map((p, idx) => (
+                    <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx !== topProducts.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div style={{ 
+                          width: '32px', height: '32px', 
+                          background: idx === 0 ? '#fef08a' : idx === 1 ? '#e2e8f0' : idx === 2 ? '#ffedd5' : '#f8fafc', 
+                          color: idx < 3 ? '#000' : '#64748b',
+                          borderRadius: '8px', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 'bold'
+                        }}>
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: '600', color: '#0f172a' }}>{p.name}</p>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>{p.totalQuantity} sold</p>
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: '600', color: '#0f172a', display: 'flex', alignItems: 'center' }}>
+                        ${p.totalRevenue.toFixed(2)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="chart-card">
-            <h3>Customer Growth</h3>
-            <div className="chart-placeholder">
-              <p>Customer acquisition trends will appear here</p>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 001.591-.68m-15.6 0A9.37 9.37 0 0112 3c4.753 0 8.871 3.157 10.364 7.598M12 3c-4.753 0-8.871 3.157-10.364 7.598"
-                />
-              </svg>
+            <div className="chart-card">
+              <h3>Order Status Breakdown</h3>
+              <div className="chart-wrapper" style={{ height: 300, width: '100%', marginTop: '20px' }}>
+                {orderStatus.length === 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#64748b' }}>
+                    <p>No orders in this period</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={orderStatus}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="count"
+                        nameKey="status"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {orderStatus.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value, name) => [`${value} Orders`, name]} />
+                      <Legend verticalAlign="bottom" height={36}/>
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
